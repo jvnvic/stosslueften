@@ -177,3 +177,15 @@ Template:
   - Restarted the runs, the queued checks and the monitor detached from VS Code (`setsid nohup`), so closing the editor no longer stops them. Documented this in the README and as a rule in AGENTS.md.
   - Made the monitor resume-aware: it reads the newest log and joins values across restarts.
 - **Human decisions / review:** Daniel reported the accidental closing and asked for the simulations to be rescued.
+
+## 2026-10-14 — Slow resumed run: file indexer and CPU heat
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Investigated why the resumed default run was about a third slower. The time step and the end time were unchanged.
+  - **Cause 1, KDE file indexer:** `baloo_file` used about 85 % of a core and 6.6 GB RAM while processing the ~80,000 folders written and then deleted by the earlier tracer write bug. Its index had bloated to 7.1 GB, of which 0.24 GB was in use.
+  - **Fix:** with Daniel's approval, excluded `cases/` from indexing (`balooctl6 config add excludeFolders …`). Pausing did not stop the work, so the AI disabled indexing until the simulations are done (`balooctl6 disable`) and ended the stuck process with SIGTERM. Simulation speed recovered from 0.024 to 0.041 simulated s per real s.
+  - **Cause 2, heat:** verified with the CPU's thermal-throttle counters that thermal throttling is real and ongoing. About 120,000 events since boot, dozens per 20 s at the time, P-cores down to 2.4 GHz, up to 97 °C.
+  - Added a rule to `AGENTS.md`: start long runs detached (`setsid nohup`).
+- **Human decisions / review:** Daniel approved the indexer changes and will improve the laptop's cooling.
+- **To undo later:** `balooctl6 enable` turns indexing back on; the `cases/` exclusion stays. Optionally, `balooctl6 purge` rebuilds the bloated index.
