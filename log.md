@@ -202,3 +202,15 @@ Template:
   - Found that the queued mesh and iteration checks had never started. The queue's process-name wait matched leftover helper shells from the AI's own launch command. Restarted the checks directly and detached.
   - Recommended **option A** for the sweep. It is 25–30× cheaper, and its 6–12 % optimistic offset is documented as a known uncertainty. This follows the plan's decision rule (B costs far more than 30 min per case).
 - **Human decisions / review:** Daniel had approved more simulation time for trustworthiness. The decision M1 is recorded as the AI's recommendation per the plan's rule; the team can override it.
+
+## 2026-10-14 — Mesh and iteration checks: results not mesh-independent
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Evaluated the mesh study (coarse ×1.4 / medium / fine ×0.7) and the iteration study (500/1000/1500/2000) for the default case.
+  - **No convergence with mesh size:** t90 is 85.0 / 66.9 / 79.8 s, and the fine mesh has 27 % less window flow.
+  - **Scatter between identical settings:** the iteration runs, all with the medium settings, scatter by about ±10 % (t90 67–82 s).
+  - Analysed the iteration histories. Every run settles after about 500 iterations, but into different states (window flow 5,670–8,030 m³/h). The steady flow has several possible states, and small mesh differences decide which one is reached.
+  - Showed that Gmsh's multi-threaded meshing is not reproducible (different meshes from the same config), while single-threaded meshing is.
+  - Documented the findings in PLAN.md §6. Recommended reproducible meshing first, then testing a better mesh type before choosing mesh settings.
+- **Human decisions / review:** Daniel asked for the best mesh setting. The AI could not give one yet, because the data show the results are not mesh-independent.

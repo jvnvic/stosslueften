@@ -112,6 +112,19 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 - **Plausibility:** compare the cross-ventilation airflow with a simple orifice-equation estimate.
 - **Reynolds independence:** the same case at 2 and 4 m/s should give τ·U ≈ constant. If that holds, wind speed could be handled by scaling results instead of by sampling. Decide this in week 2.
 
+**Mesh and iteration checks (2026-10-14), default case, method A:**
+
+| Mesh | Cells | t90 | Window flow (steady state reached) | Flow + tracer compute |
+|---|---|---|---|---|
+| coarse (×1.4) | 61k | 85.0 s | 8,030 m³/h | ~2 min |
+| medium (default), 4 runs with the same settings | 160k | 66.9–82.0 s | 6,630–7,850 m³/h | ~2–5 min |
+| fine (×0.7) | 457k | 79.8 s | 5,670 m³/h | ~11 min |
+
+Findings:
+- **Every run settles into a stable state after about 500 iterations, but not the same one.** The steady flow has several possible states, and small mesh differences decide which one the solver ends up in. The iteration count itself matters little once a state is reached.
+- **Meshing was not reproducible.** Parallel (8-thread) Gmsh meshing gives a slightly different mesh each time; single-threaded meshing gives identical meshes.
+- **Consequence:** results are not mesh-independent yet. Medium-mesh results scatter by about ±10 %, and the fine mesh differs systematically (−27 % window flow). No "best" setting can be chosen from this data. Next step: reproducible meshing, then a better mesh type (polyhedral or hex-dominant `snappyHexMesh`, see §8), and repeat the study.
+
 ## 7. Schedule
 
 | Week | Dates | Work | Milestone |
