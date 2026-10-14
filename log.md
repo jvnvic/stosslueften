@@ -36,3 +36,22 @@ Template:
   - The steady and transient solver approaches get benchmarked before choosing one.
   - Everything is in English.
   - The team works on mixed operating systems, so the instructions must be concise and usable with other AI models.
+
+## 2026-10-14 — Data generation plan
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Asked eight planning questions: room and window size, window opening states, wind, simulated time, sampling, ML models, software setup and deliverables. Each came with a recommended default.
+  - Checked package availability on Arch Linux. OpenFOAM v2606 is in the AUR as `openfoam-com`, ParaView is in the official repos, and Gmsh comes via pip.
+  - Checked the OpenFOAM v2606 source code. `scalarTransportFoam` has only a constant diffusivity, which matters for the frozen-flow option, and `gmshToFoam` creates cell zones but no face zones.
+  - Wrote `PLAN.md`, covering the fixed setup, varied inputs, output columns, pipeline, solver benchmark, checks, a 6-week schedule and risks.
+  - Updated `AGENTS.md` to point to the plan.
+- **Human decisions / review:**
+  - The room is 4×5×2.5 m with 1.0×1.25 m windows.
+  - Window modes are chosen independently per window, with the turn angle sampled and the tilt angle fixed.
+  - Wind comes from one fixed direction.
+  - Each run simulates 600 s, with the curve sampled every 30 s.
+  - Inputs are sampled with a Latin hypercube, plus a separate test set.
+  - OpenFOAM is installed natively instead of in Docker.
+  - The ML models will follow the course requirements. The deliverables are not defined yet.
+  - Focus on data generation first; the ML part will be planned later.
