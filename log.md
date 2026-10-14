@@ -265,3 +265,12 @@ Template:
   - Made the layout recalculate on resize, so it works from half to full 16:9. The CPU bars fill their rows evenly (8 cores: 2 × 4 on half a screen, one row at full width).
   - Shows "t90 not reached" instead of "nan". The example queue (three layouts on the new mesh) had finished: t90 is 76.4 s (opposite walls), 88.4 s (adjacent walls), and not reached within 10 min (same wall with one window tilted).
 - **Human decisions / review:** Daniel specified the new order of the panels, the scrollable queue and scaling to full 16:9.
+
+## 2026-10-14 — Handoff before a context reset
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:** Prepared the project for a fresh AI context.
+  - Checked that all work is committed and pushed.
+  - Updated the status line in `AGENTS.md` and turned PLAN.md §9 into an ordered list of next steps: repeat the solver benchmark on the new mesh, sweep generator, dataset writer, run the sweep, open decisions.
+  - Saved machine state (file indexing disabled, thermal throttling, OpenFOAM build fix) and working preferences in the assistant's local memory.
+- **Human decisions / review:** Daniel asked for the preparation.

@@ -165,8 +165,14 @@ Findings:
 | The Gmsh tetrahedral mesh is poor or slow for RANS | Switch to `snappyHexMesh`, with the geometry exported as STL from Python |
 | Steady RANS underestimates single-sided (`same_wall`) exchange | Document it as a limitation |
 
-## 9. Still open
+## 9. Still open / next steps (state 2026-10-14, end of day 1)
 
-- Exact deadline and deliverables.
-- Whether to sample the hinge side or keep it fixed. Decide after the benchmark, once the affordable number of runs is known.
-- Task split in the team. CFD runs only on Daniel's PC, so teammates could take visualizations, literature and documentation.
+**Done:** milestone M1 (solver: option A) and the mesh decision (snappyHexMesh medium). About 5 min per case, 64 MB on disk per case.
+
+Next, in this order:
+1. **Repeat the solver benchmark (§5) on the snappyHexMesh mesh.** The A/B comparison ran on the old tetrahedral mesh. It needs snappy versions of `configs/benchmark/same_wall.yaml` and the default case run with `--transient` (about 2–3 h; overnight is fine).
+2. **Sweep generator.** Latin hypercube sampling of the inputs (§2), writing one YAML per case (e.g. `configs/sweep/`). Train set of about 150 and a separate test set of about 30; invalid samples are redrawn and logged.
+3. **Dataset writer:** `results/summary.csv` with the columns of §3, plus `results/timeseries/<case_id>.csv`. Freeze the columns (M2). Still missing from §3: the inputs as columns, `status`/`error_message`, `git_commit`.
+4. **Run the sweep with `cfd.queue`** (detached; `--resume` after interruptions) and watch it with `analysis.monitor`.
+5. **Open decisions:** sample the hinge side or keep it fixed; tracer Δt 0.2 s or 0.5 s for the sweep (0.6 % difference, §5).
+6. **Still undecided:** exact deadline and deliverables, and the task split in the team. CFD runs only on Daniel's PC, so teammates could take visualizations, literature and documentation.

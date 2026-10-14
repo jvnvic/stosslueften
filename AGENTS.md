@@ -9,7 +9,8 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 - **Current phase: data generation** (the CFD pipeline). The ML part will be planned later.
 - [PLAN.md](PLAN.md) holds the agreed decisions, dataset columns and schedule. **Read it first.**
 - [VENTILATION_CFD_PROJECT.md](VENTILATION_CFD_PROJECT.md) is the original background spec. PLAN.md wins wherever they differ.
-- Status: the geometry and mesh generator works. The CFD case setup is next. Deadline: less than 6 weeks from 2026-10-14.
+- Status (2026-10-14): the whole single-case pipeline works and is verified (PLAN.md §5–6): snappyHexMesh mesh, steady flow, frozen tracer, metrics, pictures, run queue and live monitor. **Next: milestone M2/M3, the sweep (input sampling, then `cfd.queue`, then `results/summary.csv`)**; see PLAN.md §9.
+- Deadline: less than 6 weeks from 2026-10-14.
 
 ## Environment
 
