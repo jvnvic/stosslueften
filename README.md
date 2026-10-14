@@ -90,7 +90,7 @@ python -m pytest                                                              # 
 - `fresh_fraction.csv`: the air-replacement curve, one value per second.
 - A `log.<tool>` file for each OpenFOAM tool's output.
 
-The first run compiles our own OpenFOAM solver `tracerFoam` (`cfd/solvers/`), which takes about 30 s.
+The first run automatically compiles our own OpenFOAM solver `tracerFoam` (`cfd/solvers/`).
 
 To try a different case:
 
