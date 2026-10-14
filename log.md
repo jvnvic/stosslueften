@@ -106,3 +106,13 @@ Template:
   - Updated the configs, the geometry, the render titles and the tests (104 pass), including checks for each wall and hinge side and for a collision that a different hinge side avoids.
   - Re-rendered the README pictures.
 - **Human decisions / review:** Daniel decided to add the hinge side as a setting. Whether the sweep samples it is decided after the benchmark.
+
+## 2026-10-14 — Fixing the OpenFOAM build
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Analysed the failed AUR build log. One utility, `viewFactorsGen`, failed to link against the GMP/MPFR math libraries because its build file misses the CGAL link flags. The build stopped there, so none of the solvers (e.g. `simpleFoam`) were built.
+  - Added the missing `$(CGAL_LIBRARIES)` line in the build tree, verified that this one utility now links, and resumed the build with `makepkg -e`. The full build completed: 276 programs and 143 libraries.
+  - The first packaging run failed with "File exists" copy errors. The AI cleaned the package folder and reran only the packaging (`makepkg -R`), which succeeded.
+  - Checked that the package contains all needed solvers and tools, and documented the workaround in the README.
+- **Human decisions / review:** Daniel started the AUR build and reported the failure. Installing the finished package (needs sudo) is done by Daniel.
