@@ -102,12 +102,19 @@ python -m analysis.monitor                                                    # 
 python -m pytest                                                              # run all tests
 ```
 
-`analysis.monitor` opens a small window that updates every 5 s while simulations run. It shows:
-- the progress and estimated finish time of each running case;
-- plots that show whether the values level off (residuals, window flow, air replaced);
-- the load of each CPU core and which case runs on which core.
+**Monitor:** `python -m analysis.monitor` opens a dark window on the right half of the screen. It refreshes every 5 s and shows:
+- every running case, with progress, estimated finish time and two small plots that show whether the values level off;
+- the load of every CPU core and which case runs on it;
+- the run queues: counts, progress, average time per case, and the expected finish time, even for hundreds of entries.
 
-Start it in a second terminal. Closing it does not affect the simulations.
+Closing it does not affect the simulations. Options: `--interval 10`, `--geometry 960x1040+960+0`, `--once picture.png`.
+
+**Run queue:** many cases one after another, for example a parameter sweep:
+
+```bash
+setsid nohup python -m cfd.queue configs/examples/*.yaml > cases/queue.out 2>&1 &
+setsid nohup python -m cfd.queue --resume cases/queues/<name>.json > cases/queue.out 2>&1 &   # after an interruption
+```
 
 **Long runs:** a simulation started from a terminal or from VS Code stops when that window is closed. To keep it running, start it detached, with the log going to a file:
 

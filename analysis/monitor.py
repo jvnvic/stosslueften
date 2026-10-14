@@ -1,17 +1,26 @@
-"""Live monitor for running simulations: progress, CPU cores and convergence plots.
+"""Live monitor for running simulations: progress, convergence, CPU cores and run queues.
 
 Usage, from the repository root with the venv active (e.g. in a second terminal):
-    python -m analysis.monitor                    # window that updates every 5 s
-    python -m analysis.monitor --once status.png  # one snapshot as a picture
+    python -m analysis.monitor                         # window on the right half of the screen
+    python -m analysis.monitor --geometry 960x1040+960+0   # or an explicit size and position
+    python -m analysis.monitor --interval 10           # refresh every 10 s (default 5)
+    python -m analysis.monitor --once status.png       # one snapshot as a picture
 
-It finds the running OpenFOAM solvers (simpleFoam, tracerFoam, pimpleFoam) from
-the process list and reads their log and postProcessing files. Closing the
-window does not affect the simulations.
+It shows
+- every running OpenFOAM solver or mesh tool, one row per case folder, with progress,
+  a finish estimate and two small convergence plots;
+- the load of every CPU core and which case runs on it (any number of cores);
+- the run queues started with `python -m cfd.queue`.
+
+The monitor only reads files, and on each refresh only the lines added since the
+last one. Closing it does not affect the simulations.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
+import math
 import re
 import time
 from collections import deque
@@ -22,142 +31,176 @@ import numpy as np
 import psutil
 from matplotlib.patches import Rectangle
 
-SOLVERS = {
-    "simpleFoam": "steady flow",
-    "tracerFoam": "tracer on the frozen flow",
-    "pimpleFoam": "time-varying flow + tracer",
-}
-REFRESH_S = 5
-CASE_COLORS = ["#2a78d6", "#eb6834", "#1baf7a"]  # categorical slots 1-3, in fixed order
-SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#6250d6"]
-INK, MUTED, GRID, SURFACE, IDLE = "#0b0b0b", "#52514e", "#e1e0d9", "#fcfcfb", "#c9c7c0"
+CASES = Path("cases")
+QUEUE_DIR = CASES / "queues"
+SOLVERS = {"simpleFoam": "steady flow", "tracerFoam": "tracer", "pimpleFoam": "transient flow + tracer"}
+TOOLS = ("blockMesh", "snappyHexMesh", "surfaceFeatureExtract", "gmshToFoam", "topoSet", "createPatch",
+         "renumberMesh", "checkMesh", "decomposePar", "reconstructPar", "setFields", "wmake")
+MAX_RUN_ROWS = 4  # more parallel runs are listed in the header
+MAX_QUEUE_LINES = 16  # with fewer runs on screen the queue panel gets more lines (see draw)
+PLOT_POINTS = 1500  # longer series are thinned before plotting
+MAX_CPU_COLUMNS = 4  # cores are shown in up to 4 columns, then the columns grow longer
+
+# Dark theme. Run colors: the categorical palette's dark-mode steps, always in this order.
+BG, PANEL, GRID = "#1b1d21", "#22252a", "#34383f"
+TEXT, MUTED, IDLE = "#d8dade", "#8b9099", "#5b616b"
+RUN_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#9085e9"]
+MONO = "DejaVu Sans Mono"
+
+
+# --- Reading growing files -------------------------------------------------------
+
+
+def _number(text: str) -> float:
+    try:
+        return float(text)
+    except ValueError:
+        return math.nan  # text columns such as solver names
+
+
+class TailTable:
+    """A growing postProcessing .dat file. Each update reads only the lines added since the last one."""
+
+    def __init__(self, path: Path):
+        self.path, self.offset, self.rest = path, 0, ""
+        self.header: list[str] = []
+        self.rows: list[list[float]] = []
+        self.array = np.empty((0, 0))
+
+    def update(self) -> tuple[list[str], np.ndarray]:
+        try:
+            size = self.path.stat().st_size
+        except OSError:
+            return self.header, self.array
+        if size < self.offset:  # the file was written anew
+            self.__init__(self.path)
+        if size > self.offset:
+            with self.path.open("rb") as f:
+                f.seek(self.offset)
+                chunk = self.rest + f.read(size - self.offset).decode(errors="replace")
+            self.offset = size
+            lines = chunk.split("\n")
+            self.rest = lines.pop()  # the last line may still be incomplete
+            for line in lines:
+                if line.startswith("# Time"):
+                    self.header = line[1:].split()
+                elif line.strip() and not line.startswith("#"):
+                    self.rows.append([_number(v) for v in line.split()])
+            width = min((len(r) for r in self.rows), default=0)
+            self.array = np.array([r[:width] for r in self.rows]) if self.rows else np.empty((0, 0))
+        return self.header, self.array
+
+
+_tables: dict[Path, TailTable] = {}
+
+
+def series(function_dir: Path, filename: str) -> tuple[list[str], np.ndarray]:
+    """Output of one function object over all (re)starts; rows computed again after a restart are dropped."""
+    if not function_dir.is_dir():
+        return [], np.empty((0, 0))
+    starts = sorted((d for d in function_dir.iterdir() if d.is_dir()), key=lambda d: _number(d.name))
+    header, parts = [], []
+    for i, folder in enumerate(starts):
+        table = _tables.setdefault(folder / filename, TailTable(folder / filename))
+        names, data = table.update()
+        header = names or header
+        if data.size and i + 1 < len(starts):
+            data = data[data[:, 0] < _number(starts[i + 1].name)]
+        if data.size and (not parts or data.shape[1] == parts[0].shape[1]):
+            parts.append(data)
+    return header, (np.vstack(parts) if parts else np.empty((0, 0)))
+
+
+def _thin(data: np.ndarray) -> np.ndarray:
+    if len(data) <= PLOT_POINTS:
+        return data
+    return data[np.linspace(0, len(data) - 1, PLOT_POINTS).astype(int)]
+
+
+def _tail_text(path: Path, n_bytes: int = 64_000) -> str:
+    try:
+        with path.open("rb") as f:
+            f.seek(max(0, path.stat().st_size - n_bytes))
+            return f.read().decode(errors="replace")
+    except OSError:
+        return ""
+
+
+def _last(pattern: str, text: str) -> float | None:
+    matches = re.findall(pattern, text, re.M)
+    return float(matches[-1]) if matches else None
+
+
+# --- Runs, progress and CPU cores ---------------------------------------------------
 
 
 @dataclass
-class RunningCase:
-    folder: Path  # working directory of the solver = case (stage) folder
-    solver: str
-    ranks: list[psutil.Process] = field(default_factory=list)
+class Run:
+    folder: Path  # working directory of the program = case (stage) folder
+    program: str
+    procs: list[psutil.Process] = field(default_factory=list)
     history: deque = field(default_factory=lambda: deque(maxlen=120))  # (wall time, simulated time)
+    known: dict = field(default_factory=dict, repr=False)  # pid -> Process from the last refresh
 
     @property
     def name(self) -> str:
         parts = self.folder.parts
         return "/".join(parts[parts.index("cases") + 1:]) if "cases" in parts else self.folder.name
 
-
-# --- Reading files ---------------------------------------------------------------
-
-
-def _tail(path: Path, n_bytes: int = 200_000) -> str:
-    """Last part of a (possibly large) text file."""
-    if not path.exists():
-        return ""
-    with path.open("rb") as f:
-        f.seek(max(0, path.stat().st_size - n_bytes))
-        return f.read().decode(errors="replace")
+    @property
+    def is_solver(self) -> bool:
+        return self.program in SOLVERS
 
 
-def _last_float(pattern: str, text: str) -> float | None:
-    matches = re.findall(pattern, text, re.M)
-    return float(matches[-1]) if matches else None
-
-
-def _table(path: Path) -> tuple[list[str], np.ndarray]:
-    """Column names and numeric rows of a postProcessing .dat file (text columns become NaN)."""
-    if not path.exists():
-        return [], np.empty((0, 0))
-    header, rows = [], []
-    for line in path.read_text(errors="replace").splitlines():
-        if line.startswith("# Time"):
-            header = line[1:].split()
-        elif line.strip() and not line.startswith("#"):
-            rows.append(line.split())
-    if not rows:
-        return header, np.empty((0, 0))
-    width = min(len(r) for r in rows)
-
-    def number(text: str) -> float:
-        try:
-            return float(text)
-        except ValueError:
-            return np.nan
-
-    return header, np.array([[number(v) for v in r[:width]] for r in rows])
-
-
-def _series(function_dir: Path, filename: str) -> tuple[list[str], np.ndarray]:
-    """Like _table, but joined over all (re)starts: rows computed again after a restart are dropped."""
-    if not function_dir.exists():
-        return [], np.empty((0, 0))
-    starts = sorted((d for d in function_dir.iterdir() if d.is_dir()), key=lambda d: float(d.name))
-    header, parts = [], []
-    for i, folder in enumerate(starts):
-        names, data = _table(folder / filename)
-        header = names or header
-        if data.size and i + 1 < len(starts):
-            data = data[data[:, 0] < float(starts[i + 1].name)]
-        if data.size and (not parts or data.shape[1] == parts[0].shape[1]):
-            parts.append(data)
-    return header, (np.vstack(parts) if parts else np.empty((0, 0)))
-
-
-def _current_log(case: RunningCase) -> Path:
-    """The newest log of this solver (a resumed run writes log.<solver>.resume1, ...)."""
-    logs = list(case.folder.glob(f"log.{case.solver}*"))
-    return max(logs, key=lambda p: p.stat().st_mtime) if logs else case.folder / f"log.{case.solver}"
-
-
-def progress(case: RunningCase) -> dict:
-    """Current and end time, time step, Courant number and an estimated finish time."""
-    log = _tail(_current_log(case))
-    control = (case.folder / "system" / "controlDict").read_text(errors="replace")
-    now = _last_float(r"^Time = ([\d.e+-]+)", log) or 0.0
-    end = _last_float(r"^endTime\s+([\d.e+-]+);", control) or 1.0
-    clock = _last_float(r"ClockTime = ([\d.e+-]+) s", log)
-
-    case.history.append((time.time(), now))
-    recent = [(w, s) for w, s in case.history if w > time.time() - 300]
-    if len(recent) >= 2 and recent[-1][0] - recent[0][0] >= 20 and recent[-1][1] > recent[0][1]:
-        rate = (recent[-1][1] - recent[0][1]) / (recent[-1][0] - recent[0][0])  # simulated per wall second
-    elif clock and now > 0:
-        rate = now / clock  # average since the start
-    else:
-        rate = None
-    return {
-        "now": now,
-        "end": end,
-        "fraction": min(now / end, 1.0),
-        "eta_s": (end - now) / rate if rate else None,
-        "dt": _last_float(r"^deltaT = ([\d.e+-]+)", log),
-        "courant": _last_float(r"^Courant Number mean: [\d.e+-]+ max: ([\d.e+-]+)", log),
-    }
-
-
-# --- Processes and CPU cores -------------------------------------------------------
-
-
-def find_running(previous: dict[Path, RunningCase]) -> dict[Path, RunningCase]:
-    """Running solver processes, grouped by case folder (one entry per MPI run)."""
-    found: dict[Path, RunningCase] = {}
-    known = {p.pid: p for case in previous.values() for p in case.ranks}  # keeps cpu_percent state
+def find_runs(previous: dict[Path, Run]) -> dict[Path, Run]:
+    """Running solvers and mesh tools, grouped by working directory (one entry per MPI run)."""
+    runs: dict[Path, Run] = {}
     for proc in psutil.process_iter(["name"]):
-        solver = proc.info["name"]
-        if solver not in SOLVERS:
+        program = proc.info["name"]
+        if program not in SOLVERS and program not in TOOLS:
             continue
         try:
             folder = Path(proc.cwd())
         except psutil.Error:
             continue
-        case = found.get(folder) or previous.get(folder) or RunningCase(folder, solver)
-        if folder not in found:
-            case.ranks, case.solver = [], solver
-            found[folder] = case
-        case.ranks.append(known.get(proc.pid, proc))
-    return found
+        if folder not in runs:
+            run = previous.get(folder) or Run(folder, program)
+            known = {p.pid: p for p in run.procs}  # keep Process objects: their CPU counters
+            run.procs, run.program = [], program
+            run.known = known
+            runs[folder] = run
+        run = runs[folder]
+        if program in SOLVERS:
+            run.program = program
+        run.procs.append(run.known.get(proc.pid, proc))
+    return runs
 
 
-def _performance_cores() -> list[bool]:
+def progress(run: Run) -> dict:
+    """Simulated time, end time, time step, Courant number and finish estimate of a solver run."""
+    logs = list(run.folder.glob(f"log.{run.program}*"))
+    log = _tail_text(max(logs, key=lambda p: p.stat().st_mtime)) if logs else ""
+    try:
+        control = (run.folder / "system" / "controlDict").read_text(errors="replace")
+    except OSError:
+        control = ""
+    now = _last(r"^Time = ([\d.e+-]+)", log) or 0.0
+    end = _last(r"^endTime\s+([\d.e+-]+);", control) or 1.0
+    clock = _last(r"ClockTime = ([\d.e+-]+) s", log)
+    run.history.append((time.time(), now))
+    recent = [(w, s) for w, s in run.history if w > time.time() - 300]
+    if len(recent) >= 2 and recent[-1][0] - recent[0][0] >= 20 and recent[-1][1] > recent[0][1]:
+        rate = (recent[-1][1] - recent[0][1]) / (recent[-1][0] - recent[0][0])
+    elif clock and now > 0:
+        rate = now / clock
+    else:
+        rate = None
+    return {"now": now, "end": end, "fraction": min(now / end, 1.0), "eta_s": (end - now) / rate if rate else None,
+            "dt": _last(r"^deltaT = ([\d.e+-]+)", log),
+            "courant": _last(r"^Courant Number mean: [\d.e+-]+ max: ([\d.e+-]+)", log)}
+
+
+def performance_cores() -> list[bool]:
     """True for fast cores (P-cores on hybrid CPUs): maximum clock above the midpoint."""
     freqs = []
     for core in range(psutil.cpu_count()):
@@ -167,170 +210,323 @@ def _performance_cores() -> list[bool]:
     return [f > middle or min(freqs) == max(freqs) for f in freqs]
 
 
-def _core_usage(cases: list[RunningCase]) -> tuple[dict[int, int], list[str]]:
-    """Which case runs on which core right now, and a pinning summary per case."""
-    on_core, lines = {}, []
-    n_cores = psutil.cpu_count()
-    for i, case in enumerate(cases):
+def core_owners(runs: list[Run]) -> tuple[dict[int, int], list[str]]:
+    """Which run is on which core right now, and a pinning note per run."""
+    owners, notes, n_cores = {}, [], psutil.cpu_count()
+    for i, run in enumerate(runs):
         cores, allowed = [], set()
-        for rank in case.ranks:
+        for proc in run.procs:
             try:
-                cores.append(rank.cpu_num())
-                allowed.update(rank.cpu_affinity())
+                cores.append(proc.cpu_num())
+                allowed.update(proc.cpu_affinity())
             except psutil.Error:
                 continue
         for core in cores:
-            on_core.setdefault(core, i)
-        pinned = "not pinned (may use any core)" if len(allowed) == n_cores else f"pinned to cores {sorted(allowed)}"
-        lines.append(f"{case.name}: {len(case.ranks)} processes, {pinned}, now on cores {sorted(cores)}")
-    return on_core, lines
+            owners.setdefault(core, i)
+        pinned = "not pinned" if len(allowed) == n_cores else f"pinned to {sorted(allowed)}"
+        notes.append(f"{run.name}: {len(run.procs)} proc, {pinned}")
+    return owners, notes
+
+
+# --- Queues ---------------------------------------------------------------------
+
+
+def read_queues(keep_s: float = 3600) -> list[dict]:
+    """Queues that are still running or changed within the last hour, newest first."""
+    queues = []
+    for path in sorted(QUEUE_DIR.glob("*.json"), reverse=True):
+        try:
+            state = json.loads(path.read_text())
+            recent = time.time() - path.stat().st_mtime < keep_s
+        except (OSError, ValueError):
+            continue
+        try:
+            alive = "cfd.queue" in " ".join(psutil.Process(state["pid"]).cmdline())
+        except (psutil.Error, KeyError):
+            alive = False
+        if alive or recent:
+            queues.append({**state, "name": path.stem, "alive": alive})
+    return queues
+
+
+def queue_remaining_s(state: dict) -> float | None:
+    """Estimated time until the queue is done: average duration of its finished entries."""
+    entries = state["entries"]
+    done = [e["seconds"] for e in entries if e["status"] == "done" and e["seconds"]]
+    if not done:
+        return None
+    average = sum(done) / len(done)
+    pending = sum(e["status"] == "pending" for e in entries)
+    running = sum(max(average - (time.time() - e["started"]), 0) for e in entries if e["status"] == "running")
+    return average * pending + running
+
+
+def _duration(seconds: float) -> str:
+    seconds = max(seconds, 0)
+    if seconds >= 3600:
+        return f"{int(seconds // 3600)} h {int(seconds % 3600 // 60):02d} min"
+    if seconds >= 60:
+        return f"{int(seconds // 60)} min {int(seconds % 60):02d} s"
+    return f"{seconds:.0f} s"
+
+
+def _bar(fraction: float, width: int = 24) -> str:
+    filled = round(fraction * width)
+    return "[" + "#" * filled + "." * (width - filled) + "]"
+
+
+def queue_lines(queues: list[dict], tail: int = 3) -> list[tuple[str, str]]:
+    """(text, color) lines for the queue panel, compact for queues with hundreds of entries.
+
+    Per queue: a summary (counts, progress, throughput, finish estimate), then only the
+    relevant entries: running ones, recent failures, the last finished and the next waiting.
+    """
+    lines = []
+    for q in queues:
+        entries = q["entries"]
+        by_status = {s: [e for e in entries if e["status"] == s] for s in ("done", "running", "failed", "pending")}
+        n_finished = len(by_status["done"]) + len(by_status["failed"])
+        state = "running" if q["alive"] else ("finished" if q.get("finished") else "STOPPED (resume with --resume)")
+        lines.append((f"queue {q['name']}  {state}", TEXT))
+        lines.append((f"  {_bar(n_finished / max(len(entries), 1))} {n_finished}/{len(entries)}   "
+                      f"done {len(by_status['done'])}  run {len(by_status['running'])}  "
+                      f"failed {len(by_status['failed'])}  wait {len(by_status['pending'])}",
+                      "#e66767" if by_status["failed"] else TEXT))
+        durations = [e["seconds"] for e in by_status["done"] if e["seconds"]]
+        remaining = queue_remaining_s(q)
+        if durations and q["alive"]:
+            average = sum(durations) / len(durations)
+            finish = time.strftime("%a %H:%M", time.localtime(time.time() + remaining)) if remaining else "-"
+            lines.append((f"  avg {_duration(average)} per case ({3600 / average:.1f}/h)   "
+                          f"left ~{_duration(remaining or 0)}   done ~{finish}", MUTED))
+        for e in by_status["failed"][-tail:]:
+            lines.append((f"  FAIL  {Path(e['config']).stem[:28]:<28} {(e.get('error') or '')[:36]}", "#e66767"))
+        for e in by_status["done"][-tail:]:
+            t90 = f"t90 {e['t90_s']:.1f} s" if isinstance(e.get("t90_s"), (int, float)) else ""
+            lines.append((f"  done  {Path(e['config']).stem[:28]:<28} {_duration(e['seconds']):>12}  {t90}", MUTED))
+        for e in by_status["running"]:
+            lines.append((f"  run   {Path(e['config']).stem[:28]:<28} {_duration(time.time() - e['started']):>12}",
+                          TEXT))
+        for e in by_status["pending"][:tail]:
+            lines.append((f"  wait  {Path(e['config']).stem[:28]}", MUTED))
+        if len(by_status["pending"]) > tail:
+            lines.append((f"        ... +{len(by_status['pending']) - tail} more waiting", MUTED))
+    return lines
 
 
 # --- Drawing -------------------------------------------------------------------------
 
 
-def _style(ax, title: str, xlabel: str, ylabel: str) -> None:
-    ax.set_facecolor(SURFACE)
-    ax.set_title(title, loc="left", fontsize=9, color=INK)
-    ax.set_xlabel(xlabel, fontsize=8, color=MUTED)
-    ax.set_ylabel(ylabel, fontsize=8, color=MUTED)
-    ax.tick_params(labelsize=7, colors=MUTED)
+def _style(ax, title: str) -> None:
+    ax.set_facecolor(PANEL)
+    ax.set_title(title, loc="left", fontsize=8, color=MUTED, pad=3)
+    ax.tick_params(labelsize=7, colors=MUTED, length=2)
     ax.grid(color=GRID, linewidth=0.6)
-    for side in ("top", "right"):
-        ax.spines[side].set_visible(False)
-    for side in ("left", "bottom"):
-        ax.spines[side].set_color(GRID)
+    for spine in ax.spines.values():
+        spine.set_color(GRID)
 
 
-def _empty(ax, message: str) -> None:
-    ax.text(0.5, 0.5, message, ha="center", va="center", fontsize=8, color=MUTED, transform=ax.transAxes)
+def _note(ax, text: str) -> None:
+    ax.text(0.5, 0.5, text, ha="center", va="center", fontsize=8, color=MUTED, transform=ax.transAxes)
 
 
-def _plot_window_flows(ax, case: RunningCase, xlabel: str) -> None:
-    _style(ax, "Air flow through each window (should level off)", xlabel, "m³/h")
+def _plot_residuals(ax, run: Run, color: str) -> None:
+    _style(ax, "residuals (initial)")
+    header, data = series(run.folder / "postProcessing" / "residuals", "solverInfo.dat")
+    columns = [(i, n.removesuffix("_initial")) for i, n in enumerate(header) if n.endswith("_initial")]
+    if not data.size or not columns:
+        return _note(ax, "no values yet")
+    data = _thin(data)
+    for k, (i, name) in enumerate(columns[: len(RUN_COLORS)]):
+        if i < data.shape[1]:
+            ax.semilogy(data[:, 0], data[:, i], color=RUN_COLORS[k], linewidth=0.9, label=name)
+    ax.legend(fontsize=6.5, frameon=False, ncol=3, loc="upper right", labelcolor=TEXT)
+
+
+def _plot_window_flows(ax, run: Run, color: str) -> None:
+    _style(ax, "window flow [m³/h] (should level off)")
     plotted = False
-    for i, window in enumerate(("window1", "window2")):
-        _, data = _series(case.folder / "postProcessing" / f"{window}Flow", "surfaceFieldValue.dat")
+    for window, line_color, dash in (("window1", TEXT, "-"), ("window2", MUTED, "--")):
+        _, data = series(run.folder / "postProcessing" / f"{window}Flow", "surfaceFieldValue.dat")
         if data.size:
+            data = _thin(data)
             direction = "in" if data[-1, -1] >= 0 else "out"
-            ax.plot(data[:, 0], np.abs(data[:, -1]) * 3600, color=SERIES[i], linewidth=1.2,
-                    label=f"{window} ({direction})")
+            ax.plot(data[:, 0], np.abs(data[:, -1]) * 3600, color=line_color, linestyle=dash, linewidth=1.0,
+                    label=f"{window} {direction}")
             plotted = True
     if plotted:
-        ax.legend(fontsize=7, frameon=False, loc="best")
+        ax.legend(fontsize=6.5, frameon=False, loc="best", labelcolor=TEXT)
     else:
-        _empty(ax, "no values yet")
+        _note(ax, "no values yet")
 
 
-def _plot_residuals(ax, case: RunningCase) -> None:
-    _style(ax, "Residuals (should fall and level off)", "iteration", "initial residual")
-    header, data = _series(case.folder / "postProcessing" / "residuals", "solverInfo.dat")
-    columns = [(i, name.removesuffix("_initial")) for i, name in enumerate(header) if name.endswith("_initial")]
-    if not data.size or not columns:
-        _empty(ax, "no values yet")
-        return
-    for k, (i, name) in enumerate(columns[: len(SERIES)]):
-        ax.semilogy(data[:, 0], data[:, i], color=SERIES[k], linewidth=1.0, label=name)
-    ax.legend(fontsize=7, frameon=False, ncol=3, loc="upper right")
-
-
-def _plot_fresh_air(ax, case: RunningCase) -> None:
-    _style(ax, "Air replaced in the room", "time since the tracer started [s]", "%")
-    _, data = _series(case.folder / "postProcessing" / "roomTracer", "volFieldValue.dat")
-    monitors = (case.folder / "system" / "monitors")
-    start = _last_float(r"timeStart\s+([\d.e+-]+);", monitors.read_text()) if monitors.exists() else None
-    start = start or 0.0
+def _plot_air_replaced(ax, run: Run, color: str) -> None:
+    _style(ax, "air replaced [%]")
+    _, data = series(run.folder / "postProcessing" / "roomTracer", "volFieldValue.dat")
+    monitors = run.folder / "system" / "monitors"
+    start = _last(r"timeStart\s+([\d.e+-]+);", monitors.read_text()) if monitors.exists() else None
     if not data.size:
-        _empty(ax, f"tracer starts at t = {start:g} s" if start else "no values yet")
-        return
-    ax.plot(data[:, 0] - start, 100 * (1 - data[:, -1]), color=SERIES[0], linewidth=1.4)
+        return _note(ax, f"tracer starts at t = {start:g} s" if start else "no values yet")
+    data = _thin(data)
+    ax.plot(data[:, 0] - (start or 0), 100 * (1 - data[:, -1]), color=color, linewidth=1.3)
     ax.set_ylim(0, 100)
 
 
-def _plot_room_max(ax, case: RunningCase) -> None:
-    _style(ax, "Highest share of old air anywhere in the room", "time [s]", "share")
-    _, data = _series(case.folder / "postProcessing" / "roomTracerMax", "volFieldValue.dat")
+def _plot_room_max(ax, run: Run, color: str) -> None:
+    _style(ax, "highest old-air share in the room")
+    _, data = series(run.folder / "postProcessing" / "roomTracerMax", "volFieldValue.dat")
     if not data.size:
-        _empty(ax, "no values yet")
-        return
-    ax.plot(data[:, 0], data[:, -1], color=SERIES[1], linewidth=1.4)
+        return _note(ax, "no values yet")
+    data = _thin(data)
+    ax.plot(data[:, 0], data[:, -1], color=color, linewidth=1.3)
     ax.set_ylim(0, 1.05)
 
 
-def _text_panel(ax, case: RunningCase, color: str, info: dict) -> None:
+PLOTS = {
+    "simpleFoam": (_plot_residuals, _plot_window_flows),
+    "tracerFoam": (_plot_air_replaced, _plot_room_max),
+    "pimpleFoam": (_plot_window_flows, _plot_air_replaced),
+}
+
+
+def _safe(ax, draw_panel, *args) -> None:
+    """Draw one panel; a half-written file or similar must never stop the monitor."""
+    try:
+        draw_panel(ax, *args)
+    except Exception as error:  # noqa: BLE001 - keep the window alive whatever happens
+        ax.clear()
+        ax.set_facecolor(PANEL)
+        _note(ax, f"not available ({error.__class__.__name__})")
+
+
+def _empty_panel(ax) -> None:
+    ax.set_facecolor(PANEL)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_color(GRID)
+
+
+def _info(ax, run: Run, color: str) -> None:
     ax.axis("off")
+    ax.text(0, 1, run.name, fontsize=10, fontweight="bold", color=color, va="top", transform=ax.transAxes)
+    if not run.is_solver:
+        try:
+            age = time.time() - min(p.create_time() for p in run.procs)
+        except (psutil.Error, ValueError):
+            age = 0
+        ax.text(0, 0.78, f"preparing: {run.program}\nrunning for {_duration(age)}", fontsize=8.5,
+                color=TEXT, va="top", family=MONO, linespacing=1.5, transform=ax.transAxes)
+        return
+    info = progress(run)
+    unit = "it" if run.program == "simpleFoam" else "s"
     eta = info["eta_s"]
-    if eta is None:
-        eta_text = "finish time: estimating ..."
-    else:
-        finish = time.strftime("%H:%M", time.localtime(time.time() + eta))
-        eta_text = f"remaining: {int(eta // 3600)} h {int(eta % 3600 // 60):02d} min (done ~{finish})"
-    unit = "iterations" if case.solver == "simpleFoam" else "s"
-    lines = [
-        SOLVERS[case.solver],
-        f"{case.solver} on {len(case.ranks)} processes",
-        f"{info['now']:.6g} of {info['end']:.6g} {unit}  ({info['fraction']:.1%})",
-        eta_text,
-    ]
+    finish = "estimating ..." if eta is None else \
+        f"{_duration(eta)} (~{time.strftime('%H:%M', time.localtime(time.time() + eta))})"
+    lines = [f"{run.program}, {len(run.procs)} proc",
+             f"{info['now']:.6g} / {info['end']:.6g} {unit}",
+             f"left  {finish}"]
     if info["dt"] is not None:
-        lines.append(f"time step {info['dt']:.4f} s, max Courant number {info['courant'] or 0:.1f}")
-    ax.text(0, 1, case.name, fontsize=11, fontweight="bold", color=color, va="top", transform=ax.transAxes)
-    ax.text(0, 0.80, "\n".join(lines), fontsize=8.5, color=INK, va="top", linespacing=1.6, transform=ax.transAxes)
-    # Progress bar
+        lines.append(f"dt {info['dt']:.4f} s  Co {info['courant'] or 0:.1f}")
+    ax.text(0, 0.78, "\n".join(lines), fontsize=8.5, color=TEXT, va="top", family=MONO, linespacing=1.5,
+            transform=ax.transAxes)
     for width, bar_color in ((1.0, GRID), (info["fraction"], color)):
-        ax.add_patch(Rectangle((0, 0.02), width, 0.07, color=bar_color, transform=ax.transAxes, clip_on=False))
+        ax.add_patch(Rectangle((0, 0.0), width, 0.07, color=bar_color, transform=ax.transAxes, clip_on=False))
+    ax.text(1.0, 0.1, f"{info['fraction']:.1%}", fontsize=8, color=TEXT, ha="right", transform=ax.transAxes)
 
 
-def draw(fig, cases: dict[Path, RunningCase], perf_cores: list[bool]) -> None:
+def cpu_grid(n_cores: int) -> tuple[int, int]:
+    """(rows, columns) of the core bars: 8 cores -> 4 x 2, 16 -> 4 x 4, 32 -> 8 x 4."""
+    cols = min(MAX_CPU_COLUMNS, max(1, math.ceil(n_cores / 4)))
+    return math.ceil(n_cores / cols), cols
+
+
+def _cpu(ax, usage: list[float], owners: dict[int, int], perf: list[bool]) -> None:
+    """One compact bar per core, colored by the run whose process is on that core right now."""
+    ax.axis("off")
+    rows, cols = cpu_grid(len(usage))
+    label_w, value_w, gap = 0.16, 0.14, 0.08
+    for core, load in enumerate(usage):
+        col, row = divmod(core, rows)
+        x0, y = col * (1 + gap), rows - 1 - row
+        color = RUN_COLORS[owners[core] % len(RUN_COLORS)] if core in owners else IDLE
+        track = 1 - label_w - value_w
+        ax.text(x0, y, f"{core:>2} {'P' if perf[core] else 'E'}", fontsize=7.5, color=MUTED, va="center", family=MONO)
+        ax.add_patch(Rectangle((x0 + label_w, y - 0.32), track, 0.64, color=GRID))
+        ax.add_patch(Rectangle((x0 + label_w, y - 0.32), track * min(load, 100) / 100, 0.64, color=color))
+        ax.text(x0 + 1, y, f"{load:3.0f}%", fontsize=7.5, color=TEXT, va="center", ha="right", family=MONO)
+    ax.set_xlim(0, cols + gap * (cols - 1))
+    ax.set_ylim(-0.6, rows - 0.4)
+
+
+def draw(fig, runs: list[Run], queues: list[dict], perf: list[bool]) -> None:
     fig.clf()
-    fig.patch.set_facecolor(SURFACE)
-    case_list = sorted(cases.values(), key=lambda c: c.name)[: len(CASE_COLORS)]  # stable colors
-    n = max(len(case_list), 1)
-    grid = fig.add_gridspec(n + 1, 3, height_ratios=[1] * n + [0.9], width_ratios=[0.9, 1.3, 1.3],
-                            hspace=0.75, wspace=0.35, left=0.04, right=0.98, top=0.93, bottom=0.08)
-    fig.suptitle(f"Simulation monitor  —  updated {time.strftime('%H:%M:%S')}, every {REFRESH_S} s",
-                 x=0.04, ha="left", fontsize=11, color=INK)
-
-    if not case_list:
-        ax = fig.add_subplot(grid[0, :])
-        ax.axis("off")
-        _empty(ax, "No simulation is running right now.")
-    for row, case in enumerate(case_list):
-        color = CASE_COLORS[row]
-        text_ax = fig.add_subplot(grid[row, 0])
-        info = progress(case)
-        _text_panel(text_ax, case, color, info)
-        left, right = fig.add_subplot(grid[row, 1]), fig.add_subplot(grid[row, 2])
-        if case.solver == "simpleFoam":
-            _plot_residuals(left, case)
-            _plot_window_flows(right, case, "iteration")
-        elif case.solver == "tracerFoam":
-            _plot_fresh_air(left, case)
-            _plot_room_max(right, case)
-        else:
-            _plot_window_flows(left, case, "time [s]")
-            _plot_fresh_air(right, case)
-
-    # CPU cores: load per core, colored by the case currently running on it.
-    on_core, pin_lines = _core_usage(case_list)
+    fig.patch.set_facecolor(BG)
+    shown = runs[:MAX_RUN_ROWS]
     usage = psutil.cpu_percent(percpu=True)
-    ax = fig.add_subplot(grid[n, :2])
-    _style(ax, "CPU load per core (colored = a solver process of that case is on it right now)", "", "%")
-    colors = [CASE_COLORS[on_core[c]] if c in on_core else IDLE for c in range(len(usage))]
-    ax.bar(range(len(usage)), usage, color=colors, width=0.7)
-    ax.set_xticks(range(len(usage)),
-                  [f"{c}\n{'P' if perf_cores[c] else 'E'}" for c in range(len(usage))], fontsize=7)
-    ax.set_ylim(0, 100)
-    ax.grid(axis="x", visible=False)
-    note = fig.add_subplot(grid[n, 2])
-    note.axis("off")
-    note.text(0, 1, "P = performance core, E = efficiency core\n\n" + "\n".join(pin_lines or ["no solver processes"]),
-              fontsize=7.5, color=INK, va="top", wrap=True, transform=note.transAxes)
+    cpu_rows, _ = cpu_grid(len(usage))
+    n_run_rows = max(len(shown), 1)
+    max_lines = MAX_QUEUE_LINES + 8 * (MAX_RUN_ROWS - n_run_rows)
+    q_lines = queue_lines(queues)[:max_lines] or [("no queue (start one with: python -m cfd.queue ...)", MUTED)]
+    # Fixed sizes (in rough "inches"); unused run rows become free space at the bottom, so the
+    # layout does not jump when runs start and finish.
+    heights = [0.3] + [1.9] * n_run_rows + [0.25 + 0.24 * cpu_rows, 0.2 + 0.17 * len(q_lines)]
+    heights.append(max(0.05, 1.9 * (MAX_RUN_ROWS - n_run_rows) - 0.17 * len(q_lines)))
+    grid = fig.add_gridspec(len(heights), 3, height_ratios=heights, width_ratios=[1.0, 1.15, 1.15],
+                            left=0.05, right=0.98, top=0.985, bottom=0.01, hspace=0.45, wspace=0.3)
+
+    head = fig.add_subplot(grid[0, :])
+    head.axis("off")
+    head.text(0, 1, "stosslueften  |  simulation monitor", fontsize=11, color=TEXT, va="top",
+              transform=head.transAxes)
+    extra = f" (+{len(runs) - len(shown)} more)" if len(runs) > len(shown) else ""
+    n_wait = sum(e["status"] == "pending" for q in queues for e in q["entries"])
+    head.text(1, 1, f"{time.strftime('%H:%M:%S')}   {len(runs)} running{extra}   {n_wait} queued",
+              fontsize=9, color=MUTED, va="top", ha="right", family=MONO, transform=head.transAxes)
+
+    if not shown:
+        ax = fig.add_subplot(grid[1, :])
+        ax.axis("off")
+        _note(ax, "no simulation running")
+    for row, run in enumerate(shown, start=1):
+        color = RUN_COLORS[(row - 1) % len(RUN_COLORS)]
+        _safe(fig.add_subplot(grid[row, 0]), _info, run, color)
+        plots = PLOTS.get(run.program)
+        for col in (1, 2):
+            ax = fig.add_subplot(grid[row, col])
+            if plots:
+                _safe(ax, plots[col - 1], run, color)
+            else:
+                _empty_panel(ax)
+
+    owners, notes = core_owners(shown)
+    _safe(fig.add_subplot(grid[n_run_rows + 1, :2]), _cpu, usage, owners, perf)
+    note_ax = fig.add_subplot(grid[n_run_rows + 1, 2])
+    note_ax.axis("off")
+    note_ax.text(0, 1, "CPU load per core\ncolor = run on that core\n\n" + "\n".join(notes), fontsize=7,
+                 color=MUTED, va="top", family=MONO, linespacing=1.4, transform=note_ax.transAxes)
+
+    queue_ax = fig.add_subplot(grid[n_run_rows + 2, :])
+    queue_ax.axis("off")
+    line_height = 8 * 1.45 / 72 * fig.dpi  # pixels for 8 pt text with 1.45 line spacing
+    step = line_height / max(queue_ax.get_window_extent().height, 1)
+    for i, (text, color) in enumerate(q_lines):
+        queue_ax.text(0, 1 - i * step, text, fontsize=8, color=color, va="top", family=MONO,
+                      transform=queue_ax.transAxes)
+
+
+def right_half_geometry(screen_w: int, screen_h: int) -> str:
+    """Tk geometry for the right half of the screen (of the rightmost 16:9 monitor if several are side by side)."""
+    monitor_w = min(screen_w, round(screen_h * 16 / 9))
+    x0 = screen_w - monitor_w + monitor_w // 2
+    return f"{monitor_w // 2}x{screen_h - 70}+{x0}+0"
 
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description="Live monitor for running simulations.")
     parser.add_argument("--once", type=Path, help="save one snapshot to this PNG file instead of opening a window")
+    parser.add_argument("--interval", type=float, default=5, help="refresh interval in seconds (default 5)")
+    parser.add_argument("--geometry", help="window size and position as WIDTHxHEIGHT+X+Y (default: right half)")
     args = parser.parse_args(argv)
 
     import matplotlib
@@ -338,29 +534,29 @@ def main(argv=None) -> None:
     matplotlib.use("Agg" if args.once else "TkAgg")
     import matplotlib.pyplot as plt
 
-    perf_cores = _performance_cores()
+    perf = performance_cores()
     psutil.cpu_percent(percpu=True)  # start the CPU load measurement
-    state: dict[Path, RunningCase] = {}
+    state: dict[Path, Run] = {}
 
     def refresh(fig) -> None:
         nonlocal state
-        state = find_running(state)
-        draw(fig, state, perf_cores)
+        state = find_runs(state)
+        runs = sorted(state.values(), key=lambda r: r.name)  # stable order = stable colors
+        draw(fig, runs, read_queues(), perf)
         fig.canvas.draw_idle()
 
-    n = max(len(find_running({})), 1)
-    fig = plt.figure(figsize=(13, 2.7 * min(n, 3) + 2.3), dpi=90)
+    fig = plt.figure(figsize=(9.6, 10.1), dpi=100)
     if args.once:
-        for rank in (p for c in find_running({}).values() for p in c.ranks):
-            rank.cpu_percent(None)
-        time.sleep(1.0)  # give the load measurement a moment
+        time.sleep(1.0)  # give the CPU load measurement a moment
         refresh(fig)
-        fig.savefig(args.once, facecolor=SURFACE)
+        fig.savefig(args.once, facecolor=BG)
         print(f"saved {args.once}")
         return
-    fig.canvas.manager.set_window_title("stosslueften — simulation monitor")
+    window = fig.canvas.manager.window
+    fig.canvas.manager.set_window_title("stosslueften monitor")
+    window.geometry(args.geometry or right_half_geometry(window.winfo_screenwidth(), window.winfo_screenheight()))
     refresh(fig)
-    timer = fig.canvas.new_timer(interval=REFRESH_S * 1000)
+    timer = fig.canvas.new_timer(interval=int(args.interval * 1000))
     timer.add_callback(refresh, fig)
     timer.start()
     plt.show()

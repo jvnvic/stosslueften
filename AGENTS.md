@@ -59,6 +59,8 @@ python -m analysis.visualize --config configs/default.yaml --kind flow|tracer|cu
 python -m cfd.run_case --config configs/benchmark/same_wall.yaml --transient --procs 4   # option B comparison run (hours)
 python -m cfd.run_case --config configs/benchmark/same_wall.yaml --transient --resume   # continue it after an interruption
 python -m analysis.monitor                                    # live progress window (--once <png> for a snapshot)
+python -m cfd.queue configs/a.yaml configs/b.yaml             # run cases one after another (start detached)
+python -m cfd.queue --resume cases/queues/<name>.json         # continue an interrupted queue
 ```
 
 Not implemented yet (PLAN.md §4): the transient comparison run (benchmark option B) and `python -m sweeps.run_sweep`.
@@ -80,7 +82,11 @@ Not implemented yet (PLAN.md §4): the transient comparison run (benchmark optio
 - `analysis/metrics.py` computes `fresh_frac_XXXs`, `t90_s` and `tau_s` (PLAN.md §3) from the room-average tracer.
 - The boundary conditions follow the OpenFOAM v2606 validation case `atmDownstreamDevelopment`: a log-law wind profile at the inlet, k-ω SST turbulence, rough ground via `atmNutkWallFunction`, and a fixed shear stress at the top.
 - `cfd/run_case.py` runs the chain: Gmsh mesh, `gmshToFoam`, patch types, `topoSet` (cellZone `room`), `renumberMesh`, `checkMesh`, then `simpleFoam` in parallel. It writes `summary.json`.
-- `analysis/monitor.py` is a live matplotlib/Tk window. It finds running solvers via psutil (process name and working directory), then reads `log.<solver>` and `postProcessing/` and shows progress, an estimated finish time, convergence plots and per-core load and affinity.
+- `cfd/queue.py` runs cases sequentially via `cfd.run_case`. It writes `cases/queues/<start>.json` atomically (status per entry: pending/running/done/failed, duration, t90). `--resume` continues after an interruption. Several queues can run side by side (e.g. with `--procs 4`).
+- `analysis/monitor.py` is a live matplotlib/Tk window, dark theme, sized to the right half of a 16:9 screen.
+  - Data: running solvers and mesh tools from psutil (one row each, up to 4), per-core load in a compact grid for any core count, and the queue files.
+  - Large queues are summarised: counts, throughput, finish estimate, and only the relevant entries.
+  - Light: `TailTable` reads only newly appended lines and plots are thinned. Each panel is wrapped so that errors cannot stop the window.
 - `cfd/templates/transient/` is the option-B comparison stage: pimpleFoam starting from the steady solution, with a spin-up and then the tracer via the `scalarTransport` function object. The runner uses `mpirun --bind-to none` so that two cases can share the CPU.
 - `analysis/visualize.py` reads a solved case with PyVista. It renders top views at window height (air speed with streamlines, or the tracer) and plots the replacement curve with matplotlib.
 - `tests/`: pytest.

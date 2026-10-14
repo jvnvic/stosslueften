@@ -240,3 +240,18 @@ Template:
   - Updated the README pictures and numbers. On the new mesh, the jet crosses the room diagonally and the air replacement is close to perfect mixing.
   - The AI's wait loop hung once more on a `pgrep -f` pattern that matched itself; Daniel noticed the idle machine. The AI added a rule to AGENTS.md (wait via output files) and saved it as a lesson.
 - **Human decisions / review:** Daniel approved trying snappyHexMesh, and asked for the best mesh setting.
+
+## 2026-10-14 — Run queue and restyled monitor
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Wrote a queue runner (`cfd/queue.py`). It runs many cases one after another, writes a status file per queue for the monitor, and `--resume` continues after an interruption. Tested live with the three example cases.
+  - Rewrote the monitor (`analysis/monitor.py`) to Daniel's requirements:
+    - a dark, plain engineering look, sized to the right half of a 16:9 screen;
+    - modular for parallel runs (one compact row each, up to 4, then counted in the header);
+    - compact per-core load bars that scale to any core count;
+    - a queue panel built for hundreds of entries: summary, progress, average runtime, throughput, finish estimate, failures and only the relevant entries. Checked with a 180-entry test queue.
+  - Kept the monitor light and robust: it reads only newly appended file lines, thins long series before plotting, and wraps each panel so that a half-written file cannot stop the window.
+  - Asked about the unclear sentence on the CPU bars and interpreted it as "compact".
+  - Added tests for incremental reading, window placement and the queue estimate (121 pass).
+- **Human decisions / review:** Daniel asked for the restyle (right half of a 16:9 screen, dark, simple, modular for parallel runs and many cores, a queue list, light and stable), and pointed out that hundreds of runs will be coming.
