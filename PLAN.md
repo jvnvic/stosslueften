@@ -129,7 +129,22 @@ Findings:
 - **Meshing is now reproducible.** Gmsh runs single-threaded: the same config gives a byte-identical mesh in 0.8 s.
 - **Geometry fix:** the sash overlaps the opening by 2.5 cm on all sides, and the hinge post sticks out 2 cm beyond the sash, so no surfaces touch in the opening planes. Tet quality rose from 0.28 to 0.33.
 - **Polyhedral cells (`polyDualMesh`) were rejected.** At the sharp concave window edges, 15–370 faces stay invalid, depending on the options, so `checkMesh` fails.
-- **Next:** hex-dominant `snappyHexMesh` (§8), then repeat the mesh study with a perturbation test.
+- **Hex-dominant `snappyHexMesh`** (2026-10-14), same physics, default case, method A:
+
+| Mesh | Cells | t90 | τ | Air replaced after 60 s | Window flow | Compute per case |
+|---|---|---|---|---|---|---|
+| coarse (×1.4) | 53k | 78.2 s | 33.1 s | 83.1 % | 5,783 m³/h | 1.9 min |
+| **medium** | **103k** | **76.5 s** | **33.5 s** | **83.4 %** | **5,253 m³/h** | **3.5 min** |
+| fine (×0.7) | 249k | 77.6 s | 33.6 s | 83.3 % | 5,074 m³/h | 10.8 min |
+| medium, cell sizes ×0.97 | 120k | 76.5 s | 32.9 s | 83.6 % | 5,546 m³/h | 5.0 min |
+| medium, window 1 +1 cm | 104k | 74.2 s | 32.6 s | 84.3 % | 5,312 m³/h | 3.2 min |
+| medium, window 1 −1 cm | 104k | 75.8 s | 33.2 s | 83.7 % | 5,317 m³/h | 4.5 min |
+
+  - **Air-replacement metrics are mesh-independent and robust:** t90 within ±2.5 % and τ within ±1.5 % over all six runs. The tets scattered by ±10–20 %.
+  - **Residuals:** about 1e-5 instead of about 1e-3, and the tracer stays exactly within 0…1.
+  - **Window flow converges with refinement** (extrapolated ≈ 4,980 m³/h), so medium is about 5 % high.
+  - **Decision: `snappyHexMesh` with the medium sizes is the default mesher.** About 5 min per case including the tracer, so 180 cases take about 15 h.
+  - **Note:** the solver benchmark (§5) ran on the old tetrahedral mesh. On the new mesh, the default case's flow is 32 % lower and t90 14 % higher than on that mesh.
 
 ## 7. Schedule
 

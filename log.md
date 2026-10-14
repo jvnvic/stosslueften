@@ -224,3 +224,19 @@ Template:
   - **Geometry fix:** located the invalid faces with `checkMesh -writeSets`. Some came from sash and post surfaces touching the planes of the opening. The sash now overlaps the opening by 2.5 cm (like a real sash) and the hinge post extends 2 cm further, and the config check makes sure the sash corner stays inside the post. Tet quality improved from 0.28 to 0.33, and all 114 tests pass.
   - **Result:** the remaining invalid polyhedral faces (15 at best) sit at all sharp concave window edges, a known limitation of `polyDualMesh`. Recommended switching to the hex-dominant `snappyHexMesh` (the plan's fallback).
 - **Human decisions / review:** Daniel approved steps 1 (reproducible meshing) and 2 (polyhedral test).
+
+## 2026-10-14 — snappyHexMesh mesh study: mesh-independent results
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Implemented a second mesher based on the OpenFOAM tutorial `windAroundBuildings` (`mesh.mesher: snappy`):
+    - STL export of the solid parts with regions (`geometry/surfaces.py`);
+    - a block mesh of the domain, with refinement levels derived from the configured cell sizes;
+    - feature-edge snapping;
+    - room floor moved to the room walls with `createPatch`.
+    The first mesh was valid immediately: 103k cells, 90 % hexahedra, `checkMesh` OK.
+  - Ran a mesh study (coarse, medium, fine) plus three perturbation tests (window ±1 cm, cell sizes ×0.97). t90 stays within ±2.5 % and τ within ±1.5 %, where the tetrahedral mesh scattered by ±10–20 %. The residuals converge about 100× better.
+  - Recommended and set snappyHexMesh medium as the default mesher (about 5 min per case). Re-ran the default case: reproducible (t90 76.4 s vs 76.5 s).
+  - Updated the README pictures and numbers. On the new mesh, the jet crosses the room diagonally and the air replacement is close to perfect mixing.
+  - The AI's wait loop hung once more on a `pgrep -f` pattern that matched itself; Daniel noticed the idle machine. The AI added a rule to AGENTS.md (wait via output files) and saved it as a lesson.
+- **Human decisions / review:** Daniel approved trying snappyHexMesh, and asked for the best mesh setting.

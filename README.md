@@ -15,16 +15,16 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | OpenFOAM case: steady wind flow | ✅ first test case runs |
 | Tracer (air replacement) and metrics | ✅ runs on the frozen steady flow |
 | Solver benchmark: comparison with a fully transient run | ✅ steady method chosen (see below) |
-| Mesh and iteration checks | ⏳ running |
+| Mesh study | ✅ snappyHexMesh, medium cell sizes (see PLAN.md §6) |
 | Parameter sweep, dataset | planned |
 
 ## First result
 
 ![Air speed and streamlines in the default case](docs/images/default_flow.png)
 
-This is the default case: windows on opposite walls, both turned open 90°, with a 3 m/s wind from the south. The wind enters through the south window, crosses the room as a jet and leaves through the north window, with two slow vortices on either side of the jet. About **7,700 m³/h** of air flows through the 50 m³ room.
+This is the default case: windows on opposite walls, both turned open 90°, with a 3 m/s wind from the south. The wind enters through the south window and crosses the room diagonally as a jet, with a slow vortex in the south-east corner. It leaves through the north window. About **5,250 m³/h** of air flows through the 50 m³ room.
 
-The mesh has 160k cells, and the steady solve took 4.4 min on 8 cores. These are first test values on a coarse mesh and have not been checked for accuracy yet.
+The mesh is a hex-dominant snappyHexMesh with 103k cells, and the whole case (mesh, flow, tracer) takes about 5 min on 8 cores. The mesh study in [PLAN.md §6](PLAN.md) shows that the air-replacement results change by less than 2 % with finer cells.
 
 ### Air replacement
 
@@ -32,13 +32,13 @@ The mesh has 160k cells, and the steady solve took 4.4 min on 8 cores. These are
 
 At the start, the room is full of "old" indoor air (a tracer with value 1), and outdoor air is fresh (value 0). The tracer is then carried and mixed by the simulated wind flow.
 
-- **90 % replaced:** after **67 s**.
-- **Time constant:** the curve follows 1 − exp(−t/τ) with **τ = 30 s**.
-- **Compared with perfect mixing:** a perfectly mixed room with the same airflow would reach 90 % after 54 s. The real room is slower because part of the incoming air rushes straight through to the opposite window.
+- **90 % replaced:** after **76 s**.
+- **Time constant:** the curve follows 1 − exp(−t/τ) with **τ = 33.5 s**.
+- **Compared with perfect mixing:** a perfectly mixed room with the same airflow would reach 90 % after about 79 s. The diagonal jet stirs the whole room, so it comes close to perfect mixing.
 
 ![Where the original indoor air is after 30, 60 and 120 s](docs/images/default_tracer.png)
 
-The pictures show where the old air stays longest: in the slow vortex next to the jet, on the west side of the room.
+The pictures show where the old air stays longest: in the eastern half of the room, around the vortex, and in the south-west corner.
 
 ### Solver benchmark: is the fast method good enough?
 
@@ -48,7 +48,7 @@ The dataset uses a fast method:
 We compared it with a much more expensive one:
 - **(B)** compute the time-varying flow with the tracer (URANS), about 25–30× slower.
 
-We ran both on two cases: windows on opposite walls, and both windows on the same wall. The second is the hardest case for method A.
+We ran both on two cases: windows on opposite walls, and both windows on the same wall. The second is the hardest case for method A. This benchmark ran on the earlier tetrahedral mesh.
 
 ![Benchmark, opposite walls](docs/images/benchmark_default.png)
 ![Benchmark, same wall](docs/images/benchmark_same_wall.png)
