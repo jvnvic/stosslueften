@@ -8,3 +8,7 @@ FoamFile
 
 // OpenFOAM's standard quality limits for snappyHexMesh.
 #includeEtc "caseDicts/mesh/generation/meshQualityDict.cfg"
+
+// checkMesh accepts a face skewness of at most 4, also at walls. The standard
+// file above allows 20 at walls, so snappy could create faces that checkMesh rejects.
+maxBoundarySkewness 4;
