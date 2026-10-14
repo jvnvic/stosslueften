@@ -10,6 +10,7 @@ tracer
     alphaD          1.0;
     alphaDt         1.428571;
     timeStart       @SPINUP@;       // flow-only spin-up before the tracer starts
+    writeControl    writeTime;      // write C only with the other fields (default would be every step)
 }
 
 roomTracer

@@ -3,7 +3,18 @@
 import numpy as np
 import pytest
 
-from analysis.metrics import tracer_metrics
+from analysis.metrics import read_series, tracer_metrics
+
+
+def test_series_are_joined_across_a_restart(tmp_path):
+    # First run wrote t = 1..5, then it was restarted at t = 3 and wrote t = 4..6 again.
+    for start, rows in (("0", [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50)]), ("3", [(4, 41), (5, 51), (6, 61)])):
+        folder = tmp_path / start
+        folder.mkdir()
+        (folder / "v.dat").write_text("# Time value\n" + "".join(f"{t} {v}\n" for t, v in rows))
+    data = read_series(tmp_path, "v.dat")
+    np.testing.assert_array_equal(data[:, 0], [1, 2, 4, 5, 6])  # t = 3 belongs to the restart folder
+    np.testing.assert_array_equal(data[:, 1], [10, 20, 41, 51, 61])
 
 
 def test_perfectly_mixed_room_gives_its_time_constant():

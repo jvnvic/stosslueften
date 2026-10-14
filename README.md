@@ -93,6 +93,14 @@ python -m pytest                                                              # 
 
 Start it in a second terminal. Closing it does not affect the simulations.
 
+**Long runs:** a simulation started from a terminal or from VS Code stops when that window is closed. To keep it running, start it detached, with the log going to a file:
+
+```bash
+setsid nohup python -m cfd.run_case --config configs/default.yaml > run.out 2>&1 &
+```
+
+An interrupted transient comparison run can be continued from its last save point (every 30 s of simulated time) with `--transient --resume`.
+
 `cfd.run_case` writes everything to `cases/<case_id>/`:
 - `summary.json`: the key numbers.
 - `fresh_fraction.csv`: the air-replacement curve, one value per second.

@@ -20,9 +20,26 @@ def read_dat(path: Path) -> np.ndarray:
     return np.array(rows, dtype=float)
 
 
+def read_series(function_dir: Path, filename: str) -> np.ndarray:
+    """All rows of one function object's output, also across restarts of the run.
+
+    After a restart at time T, OpenFOAM writes into a new folder named T. Rows of
+    the earlier folders from T on were computed again, so they are dropped.
+    """
+    starts = sorted((d for d in function_dir.iterdir() if d.is_dir()), key=lambda d: float(d.name))
+    parts = []
+    for i, folder in enumerate(starts):
+        data = read_dat(folder / filename)
+        if data.size and i + 1 < len(starts):
+            data = data[data[:, 0] < float(starts[i + 1].name)]
+        if data.size:
+            parts.append(data)
+    return np.vstack(parts)
+
+
 def fresh_fraction_curve(tracer_dir: Path, release_time: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
     """Time [s] since the tracer release and fresh_fraction, starting at 0 with an unreplaced room."""
-    data = read_dat(tracer_dir / "postProcessing" / "roomTracer" / "0" / "volFieldValue.dat")
+    data = read_series(tracer_dir / "postProcessing" / "roomTracer", "volFieldValue.dat")
     data = data[data[:, 0] > release_time]
     time = np.concatenate([[0.0], data[:, 0] - release_time])
     fresh = np.concatenate([[0.0], 1.0 - data[:, -1]])
@@ -61,5 +78,5 @@ def tracer_metrics(time: np.ndarray, fresh: np.ndarray, duration_s: float) -> di
 
 def tracer_bounds(tracer_dir: Path) -> tuple[float, float]:
     """Smallest and largest tracer value anywhere during the run (should stay within 0...1)."""
-    data = read_dat(tracer_dir / "postProcessing" / "tracerRange" / "0" / "fieldMinMax.dat")
+    data = read_series(tracer_dir / "postProcessing" / "tracerRange", "fieldMinMax.dat")
     return float(data[:, -2].min()), float(data[:, -1].max())

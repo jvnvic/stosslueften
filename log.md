@@ -165,3 +165,15 @@ Template:
   - **Live monitor:** wrote `analysis/monitor.py`, a small window that shows running simulations (progress, finish time, time step, Courant number), convergence plots and per-core CPU load with process placement. It revealed that the transient flows were still drifting after the planned 60 s spin-up, which will be checked before trusting the comparison.
   - **Curve plot fixes:** clearer label for the "perfectly mixed" reference, which only counts the through-flow, and an x-axis that grows when 90 % is reached late.
 - **Human decisions / review:** Daniel decided that more simulation time is acceptable if it makes the results more trustworthy, and asked for an explanation of the long transient run and for a live monitor window.
+
+## 2026-10-14 — Rescuing the interrupted transient runs
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - After VS Code was closed by accident, all runs started from it had stopped: the default room at t = 230 s of 360 s, `same_wall` at 545 s of 660 s, plus the queued checks and the monitor.
+  - Found an AI bug while inspecting the cases. The tracer function object had no write setting and therefore wrote a time folder at every time step: 29 GB of redundant data. Fixed the template (`writeControl writeTime`).
+  - Added `--resume` to the runner. It continues an interrupted parallel run from its last complete save point and removes the incomplete per-step folders. Measured values are joined across the restart (`read_series`), with a test.
+  - Resumed both runs from their save points (210 s and 540 s), so only about 20 s and 5 s of simulated time were lost. Freed about 27 GB.
+  - Restarted the runs, the queued checks and the monitor detached from VS Code (`setsid nohup`), so closing the editor no longer stops them. Documented this in the README and as a rule in AGENTS.md.
+  - Made the monitor resume-aware: it reads the newest log and joins values across restarts.
+- **Human decisions / review:** Daniel reported the accidental closing and asked for the simulations to be rescued.

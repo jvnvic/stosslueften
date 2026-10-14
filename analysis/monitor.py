@@ -86,9 +86,31 @@ def _table(path: Path) -> tuple[list[str], np.ndarray]:
     return header, np.array([[number(v) for v in r[:width]] for r in rows])
 
 
+def _series(function_dir: Path, filename: str) -> tuple[list[str], np.ndarray]:
+    """Like _table, but joined over all (re)starts: rows computed again after a restart are dropped."""
+    if not function_dir.exists():
+        return [], np.empty((0, 0))
+    starts = sorted((d for d in function_dir.iterdir() if d.is_dir()), key=lambda d: float(d.name))
+    header, parts = [], []
+    for i, folder in enumerate(starts):
+        names, data = _table(folder / filename)
+        header = names or header
+        if data.size and i + 1 < len(starts):
+            data = data[data[:, 0] < float(starts[i + 1].name)]
+        if data.size and (not parts or data.shape[1] == parts[0].shape[1]):
+            parts.append(data)
+    return header, (np.vstack(parts) if parts else np.empty((0, 0)))
+
+
+def _current_log(case: RunningCase) -> Path:
+    """The newest log of this solver (a resumed run writes log.<solver>.resume1, ...)."""
+    logs = list(case.folder.glob(f"log.{case.solver}*"))
+    return max(logs, key=lambda p: p.stat().st_mtime) if logs else case.folder / f"log.{case.solver}"
+
+
 def progress(case: RunningCase) -> dict:
     """Current and end time, time step, Courant number and an estimated finish time."""
-    log = _tail(case.folder / f"log.{case.solver}")
+    log = _tail(_current_log(case))
     control = (case.folder / "system" / "controlDict").read_text(errors="replace")
     now = _last_float(r"^Time = ([\d.e+-]+)", log) or 0.0
     end = _last_float(r"^endTime\s+([\d.e+-]+);", control) or 1.0
@@ -188,7 +210,7 @@ def _plot_window_flows(ax, case: RunningCase, xlabel: str) -> None:
     _style(ax, "Air flow through each window (should level off)", xlabel, "m³/h")
     plotted = False
     for i, window in enumerate(("window1", "window2")):
-        _, data = _table(case.folder / "postProcessing" / f"{window}Flow" / "0" / "surfaceFieldValue.dat")
+        _, data = _series(case.folder / "postProcessing" / f"{window}Flow", "surfaceFieldValue.dat")
         if data.size:
             direction = "in" if data[-1, -1] >= 0 else "out"
             ax.plot(data[:, 0], np.abs(data[:, -1]) * 3600, color=SERIES[i], linewidth=1.2,
@@ -202,7 +224,7 @@ def _plot_window_flows(ax, case: RunningCase, xlabel: str) -> None:
 
 def _plot_residuals(ax, case: RunningCase) -> None:
     _style(ax, "Residuals (should fall and level off)", "iteration", "initial residual")
-    header, data = _table(case.folder / "postProcessing" / "residuals" / "0" / "solverInfo.dat")
+    header, data = _series(case.folder / "postProcessing" / "residuals", "solverInfo.dat")
     columns = [(i, name.removesuffix("_initial")) for i, name in enumerate(header) if name.endswith("_initial")]
     if not data.size or not columns:
         _empty(ax, "no values yet")
@@ -214,7 +236,7 @@ def _plot_residuals(ax, case: RunningCase) -> None:
 
 def _plot_fresh_air(ax, case: RunningCase) -> None:
     _style(ax, "Air replaced in the room", "time since the tracer started [s]", "%")
-    _, data = _table(case.folder / "postProcessing" / "roomTracer" / "0" / "volFieldValue.dat")
+    _, data = _series(case.folder / "postProcessing" / "roomTracer", "volFieldValue.dat")
     monitors = (case.folder / "system" / "monitors")
     start = _last_float(r"timeStart\s+([\d.e+-]+);", monitors.read_text()) if monitors.exists() else None
     start = start or 0.0
@@ -227,7 +249,7 @@ def _plot_fresh_air(ax, case: RunningCase) -> None:
 
 def _plot_room_max(ax, case: RunningCase) -> None:
     _style(ax, "Highest share of old air anywhere in the room", "time [s]", "share")
-    _, data = _table(case.folder / "postProcessing" / "roomTracerMax" / "0" / "volFieldValue.dat")
+    _, data = _series(case.folder / "postProcessing" / "roomTracerMax", "volFieldValue.dat")
     if not data.size:
         _empty(ax, "no values yet")
         return
