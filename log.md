@@ -64,4 +64,4 @@ Template:
   - Ran a Gmsh smoke test: meshed a room box with a window opening and exported it in the MSH 2.2 format that OpenFOAM's `gmshToFoam` reads.
   - Read the AUR package's install notes. OpenFOAM is loaded with `of`, and ParaView has to use its built-in OpenFOAM reader.
   - Added the setup commands to `AGENTS.md`.
-- **Human decisions / review:** Daniel started the OpenFOAM v2606 build (AUR `openfoam-com`) himself and asked the AI to commit, push and set up the Python environment.
+- **Human decisions / review:** Daniel started the OpenFOAM v2606 build (AUR `openfoam-com`) and asked the AI to commit, push and set up the Python environment.
