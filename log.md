@@ -252,6 +252,6 @@ Template:
     - compact per-core load bars that scale to any core count;
     - a queue panel built for hundreds of entries: summary, progress, average runtime, throughput, finish estimate, failures and only the relevant entries. Checked with a 180-entry test queue.
   - Kept the monitor light and robust: it reads only newly appended file lines, thins long series before plotting, and wraps each panel so that a half-written file cannot stop the window.
-  - Asked about the unclear sentence on the CPU bars and interpreted it as "compact".
+  - Interpreted the unclear sentence on the CPU bars ("We do need the huge processor load bars") as "compact" and told Daniel, so he can correct it.
   - Added tests for incremental reading, window placement and the queue estimate (121 pass).
 - **Human decisions / review:** Daniel asked for the restyle (right half of a 16:9 screen, dark, simple, modular for parallel runs and many cores, a queue list, light and stable), and pointed out that hundreds of runs will be coming.
