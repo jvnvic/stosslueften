@@ -62,7 +62,7 @@ python -m cfd.run_case --config configs/benchmark/same_wall.yaml --transient --p
 python -m cfd.run_case --config configs/benchmark/same_wall.yaml --transient --resume   # continue it after an interruption
 python -m analysis.monitor                                    # live progress window (--once <png> for a snapshot)
 python -m cfd.queue configs/a.yaml configs/b.yaml             # run cases one after another (start detached)
-python -m cfd.queue --transient --procs 4 configs/a.yaml      # option-B comparison runs as a queue
+python -m cfd.queue --transient --procs 4 configs/a.yaml      # option-B comparison runs (steady flow first if missing)
 python -m cfd.queue --resume cases/queues/<name>.json         # continue an interrupted queue
 ```
 

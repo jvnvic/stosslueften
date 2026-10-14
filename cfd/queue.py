@@ -4,7 +4,7 @@ Usage, from the repository root with the venv active and OpenFOAM loaded. Start 
 detached so that it survives closing the terminal or editor:
     setsid nohup python -m cfd.queue configs/benchmark/snappy_*.yaml > cases/queue.out 2>&1 &
     python -m cfd.queue --procs 4 configs/a.yaml configs/b.yaml    # --procs is passed on to run_case
-    python -m cfd.queue --transient --procs 4 configs/a.yaml        # comparison runs (needs the flow result)
+    python -m cfd.queue --transient --procs 4 configs/a.yaml        # comparison runs (steady flow first if missing)
 
 Each queue writes its status to cases/queues/<start time>.json. The monitor
 (python -m analysis.monitor) reads all of them, so several queues can run side by
@@ -62,7 +62,8 @@ def main(argv=None) -> None:
     parser.add_argument("configs", nargs="*", type=Path, help="case YAML files, run in this order")
     parser.add_argument("--procs", type=int, help="CPU cores per case (passed on to run_case)")
     parser.add_argument("--transient", action="store_true",
-                        help="comparison runs with time-varying flow (run_case --transient); each case needs its flow result")
+                        help="comparison runs with time-varying flow (run_case --transient); "
+                             "the steady flow is computed first for cases that do not have it yet")
     parser.add_argument("--resume", type=Path, help="continue an interrupted queue (its cases/queues/*.json file)")
     args = parser.parse_args(argv)
     if bool(args.configs) == bool(args.resume):
@@ -85,7 +86,13 @@ def main(argv=None) -> None:
         except ConfigError as error:
             raise SystemExit(f"Invalid configuration: {error}")
         QUEUE_DIR.mkdir(parents=True, exist_ok=True)
-        path = QUEUE_DIR / f"{time.strftime('%Y%m%d-%H%M%S')}.json"
+        while True:  # claim a free file name; two queues started in the same second get different ones
+            path = QUEUE_DIR / f"{time.strftime('%Y%m%d-%H%M%S')}.json"
+            try:
+                path.open("x").close()
+                break
+            except FileExistsError:
+                time.sleep(1)
         state = {
             "pid": os.getpid(),
             "started": time.time(),
@@ -101,16 +108,22 @@ def main(argv=None) -> None:
     write_state(path, state)
     procs = args.procs or state.get("procs")
     transient = state.get("transient", False)
-    extra = (["--procs", str(procs)] if procs else []) + (["--transient"] if transient else [])
+    run_case = [sys.executable, "-m", "cfd.run_case"] + (["--procs", str(procs)] if procs else [])
     for entry in state["entries"]:
         if entry["status"] != "pending":
             continue
         entry["status"], entry["started"] = "running", time.time()
         write_state(path, state)
+        commands = [run_case + ["--config", entry["config"]]]  # steady flow + tracer (method A)
+        if transient:
+            has_flow = (CASES / entry["case_id"] / "summary.json").exists()
+            commands = ([] if has_flow else commands) + [run_case + ["--config", entry["config"], "--transient"]]
         log = CASES / f"{entry['case_id']}.{'transient.' if transient else ''}queue.log"
         with log.open("w") as out:
-            result = subprocess.run([sys.executable, "-m", "cfd.run_case", "--config", entry["config"], *extra],
-                                    stdout=out, stderr=subprocess.STDOUT)
+            for command in commands:
+                result = subprocess.run(command, stdout=out, stderr=subprocess.STDOUT)
+                if result.returncode != 0:
+                    break
         entry["seconds"] = round(time.time() - entry["started"], 1)
         if result.returncode == 0:
             entry["status"], entry["t90_s"] = "done", _result(entry["case_id"], transient)
