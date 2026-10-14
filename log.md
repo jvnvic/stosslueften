@@ -76,3 +76,12 @@ Template:
   - Made one modeling choice: each sash turns about a solid 4 cm hinge post. Without it, the sash and wall form razor-thin wedges near the hinge that can't be meshed.
   - Added 56 automated tests. Meshed all 21 distinct layout, mode and angle combinations: each takes about 1 s and gives about 155–160k cells, with no poor-quality cells.
 - **Human decisions / review:** Daniel asked the AI to start the geometry generator while OpenFOAM compiles.
+
+## 2026-10-14 — README
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Wrote `README.md` covering the project summary, status, what is simulated, setup, usage, repository layout and links to the other documents.
+  - Added Daniel's Gmsh screenshot of the default geometry as `docs/images/geometry_default.png`.
+  - Added a rule to `AGENTS.md` that every AI assistant keeps the README up to date.
+- **Human decisions / review:** Daniel asked for a README that is always kept current, and provided the screenshot.

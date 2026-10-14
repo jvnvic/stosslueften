@@ -24,6 +24,7 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 4. Never commit generated case folders (`cases/`). Do commit the dataset CSVs (`results/`).
 5. The CFD pipeline may assume Linux with OpenFOAM sourced. Anything teammates run must work on any OS.
 6. When you add commands or folders, update the two sections below.
+7. **Keep [README.md](README.md) up to date.** Whenever the status, setup, commands or folders change, update it in the same commit. It is written for teammates, so keep it plain and short.
 
 ## Commands
 
@@ -65,5 +66,6 @@ python -m sweeps.run_sweep --config configs/sweeps/screening.yaml
 - `geometry/windows.py` holds the wall frames, sash positions and the overlap/collision checks. It uses plain numpy, without Gmsh.
 - `geometry/generate.py` builds the Gmsh OpenCASCADE model as a single `fluid` volume. It sorts boundary surfaces into patches (`inlet outlet sides top ground building room_walls sashes`) by their position, sets the mesh size fields, and writes the mesh in MSH 2.2.
 - `tests/`: pytest.
+- `docs/images/` holds the images used in README.md.
 
 The rest of the planned layout is in spec §7.
