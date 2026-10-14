@@ -126,6 +126,15 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 2. Use B for all cases: about 5 days of compute. B would first need its own short mesh check.
 3. First compare A and B on one or two cases with a tilted window (about 1–1.5 h), then choose between 1 and 2.
 
+**Overnight comparison (started 2026-10-15 00:00, configs in `configs/comparison/`).** A vs B for every layout and window-mode combination, at 1 and 5 m/s wind, and a coarse-mesh check of B. The results go here when it has finished. Findings so far:
+- **A's same-wall result is robust.** With window 1 moved by ±1 cm or with cells 3 % smaller, A gives t90 564–581 s, τ 242–249 s, and through-flow ≈ 0 every time. A's 24 % gap to B is systematic, not chance.
+- **A depends on where the steady solver stops, in cases that never fully settle.** Adjacent walls (turn 60° / turn 30°), identical mesh, run on 8 vs 4 cores:
+  - window flow 4,444 vs 4,345 m³/h, and t90 88.4 vs 94.0 s (6 %);
+  - the window flow keeps swinging by ±1.3 % over the iterations, and the mean over iterations 1000–2000 is identical (4,406 vs 4,407 m³/h);
+  - the default case barely swings (±0.2 %).
+  - **Proposal if A is kept:** run the tracer on the flow averaged over the last ~1000 iterations (`fieldAverage` of U, phi and nut) instead of the last iteration.
+- **Mesh fix:** one case failed `checkMesh` because of 2 sash faces with skewness 4.1. snappyHexMesh now uses the same limit as checkMesh (4) at walls. The default mesh is byte-identical, so earlier results stay valid.
+
 ## 6. Checks before the big sweep
 
 - `checkMesh` passes for all 3 layouts × both modes.

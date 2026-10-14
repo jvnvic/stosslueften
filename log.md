@@ -312,3 +312,17 @@ Template:
       - the same-wall case on the coarse mesh, as a mesh check for method B.
   - Extended `cfd.queue --transient` so that it first runs the steady flow for cases that don't have one yet. Two queues started in the same second now get different status files.
 - **Human decisions / review:** Daniel asked for a long overnight plan that gives as much data as possible for the decision.
+
+## 2026-10-15 — Overnight comparison: first findings and a mesh fix
+- **Who:** Daniel (asleep; the AI worked unattended)
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Checked the start of the overnight batch.
+    - The three steady-method checks show that A's same-wall result is robust (t90 564–581 s).
+    - The queue runs the steady flow and then the transient stage, as intended.
+  - One case (opposite walls, turn 45° and tilt) failed `checkMesh`: 2 sash faces with skewness 4.1, while snappyHexMesh allows up to 20 at walls.
+    - Set snappyHexMesh to checkMesh's limit (4).
+    - Checked that the default mesh is byte-identical and that the failed case now passes.
+    - Queued the case again; it starts when comparison queue 2 has finished.
+  - Found that method A depends on where the steady solver stops, in cases whose flow keeps swinging over the iterations. The same adjacent-walls case gave t90 88.4 s on 8 cores and 94.0 s on 4 cores, with an identical mean flow over the last 1000 iterations. Wrote this into PLAN.md §5 with a proposed fix (run the tracer on the iteration-averaged flow), to be decided by the team.
+- **Human decisions / review:** none yet; to be reviewed by Daniel in the morning.
