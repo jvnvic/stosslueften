@@ -1,0 +1,65 @@
+// Function objects of the transient run. The tracer is solved here (not by a
+// separate solver), with the same diffusivity as tracerFoam:
+// D = alphaD*nu + alphaDt*nut = nu/Sc + nut/Sct with Sc = 1, Sct = 0.7.
+
+tracer
+{
+    type            scalarTransport;
+    libs            (solverFunctionObjects);
+    field           C;
+    alphaD          1.0;
+    alphaDt         1.428571;
+    timeStart       @SPINUP@;       // flow-only spin-up before the tracer starts
+}
+
+roomTracer
+{
+    type            volFieldValue;
+    libs            (fieldFunctionObjects);
+    regionType      cellZone;
+    name            room;
+    operation       volAverage;
+    fields          (C);
+    writeFields     false;
+    timeStart       @SPINUP@;
+    writeControl    timeStep;
+    writeInterval   1;
+}
+
+tracerRange
+{
+    type            fieldMinMax;
+    libs            (fieldFunctionObjects);
+    fields          (C);
+    location        false;
+    timeStart       @SPINUP@;
+    writeControl    timeStep;
+    writeInterval   1;
+}
+
+speed
+{
+    type            mag;
+    libs            (fieldFunctionObjects);
+    field           U;
+    result          magU;
+    executeControl  timeStep;
+    writeControl    writeTime;
+}
+
+roomAverage
+{
+    type            volFieldValue;
+    libs            (fieldFunctionObjects);
+    regionType      cellZone;
+    name            room;
+    operation       volAverage;
+    fields          (magU);
+    writeFields     false;
+    writeControl    timeStep;
+    writeInterval   1;
+}
+
+// Net air flow through each window opening [m^3/s], positive = into the room.
+// Written every time step to show how much the flow fluctuates.
+@WINDOW_MONITORS@

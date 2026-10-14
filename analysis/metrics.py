@@ -20,10 +20,11 @@ def read_dat(path: Path) -> np.ndarray:
     return np.array(rows, dtype=float)
 
 
-def fresh_fraction_curve(tracer_dir: Path) -> tuple[np.ndarray, np.ndarray]:
-    """Time [s] and fresh_fraction, starting at t = 0 with an unreplaced room."""
+def fresh_fraction_curve(tracer_dir: Path, release_time: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
+    """Time [s] since the tracer release and fresh_fraction, starting at 0 with an unreplaced room."""
     data = read_dat(tracer_dir / "postProcessing" / "roomTracer" / "0" / "volFieldValue.dat")
-    time = np.concatenate([[0.0], data[:, 0]])
+    data = data[data[:, 0] > release_time]
+    time = np.concatenate([[0.0], data[:, 0] - release_time])
     fresh = np.concatenate([[0.0], 1.0 - data[:, -1]])
     return time, fresh
 

@@ -1,8 +1,9 @@
 """Write the OpenFOAM case files (0/, constant/, system/) for one case.
 
-Each case has two stages, each with its own templates in cfd/templates/<stage>/:
-- "flow":   steady wind flow with simpleFoam, in cases/<case_id>/
-- "tracer": air replacement with tracerFoam on the frozen flow, in cases/<case_id>/tracer/
+Each case has up to three stages, each with its own templates in cfd/templates/<stage>/:
+- "flow":      steady wind flow with simpleFoam, in cases/<case_id>/
+- "tracer":    air replacement with tracerFoam on the frozen flow, in cases/<case_id>/tracer/
+- "transient": comparison run with time-varying flow (pimpleFoam), in cases/<case_id>/transient/
 
 The @PLACEHOLDERS@ in the templates are filled in from the case config. The mesh
 itself comes from geometry/generate.py (see run_case.py).
@@ -94,6 +95,9 @@ def placeholders(cfg: CaseConfig) -> dict[str, str]:
         "N_PROCS": str(cfg.flow.n_procs),
         "TRACER_DURATION": f"{cfg.flow.tracer_duration_s:g}",
         "TRACER_TIME_STEP": f"{cfg.flow.tracer_time_step_s:g}",
+        "SPINUP": f"{cfg.flow.transient_spinup_s:g}",
+        "TRANSIENT_END": f"{cfg.flow.transient_spinup_s + cfg.flow.tracer_duration_s:g}",
+        "MAX_COURANT": f"{cfg.flow.transient_max_courant:g}",
         "ROOM_MAX": f"{room.width_m:g} {room.depth_m:g} {room.height_m:g}",
         "WINDOW_MONITORS": "\n".join(window_monitor(pw) for pw in place_windows(cfg)),
     }

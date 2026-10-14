@@ -79,6 +79,8 @@ class Flow:
     n_procs: int  # CPU cores used for one case
     tracer_duration_s: float  # simulated time of the air replacement
     tracer_time_step_s: float
+    transient_spinup_s: float  # transient run: flow-only time before the tracer starts
+    transient_max_courant: float  # transient run: time step limit
 
 
 @dataclass(frozen=True)

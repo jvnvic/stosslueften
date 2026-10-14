@@ -38,7 +38,7 @@ OLD_AIR_COLORS = LinearSegmentedColormap.from_list(
     "old_air", ["#fdf1ea", "#f9cdb7", "#f4a382", "#eb6834", "#c24f1e", "#8f3812", "#5c230a"]
 )
 INK, MUTED, WALLS = "#2b2b2b", "#6b6b6b", "#b9b4ab"
-SURFACE, GRID, SERIES_1 = "#fcfcfb", "#e1e0d9", "#2a78d6"
+SURFACE, GRID, SERIES_1, SERIES_2 = "#fcfcfb", "#e1e0d9", "#2a78d6", "#eb6834"
 TRACER_TIMES = (30, 60, 120)
 
 
@@ -158,15 +158,26 @@ def plot_curve(cfg: CaseConfig, case_dir: Path, out: Path) -> None:
 
     fig, ax = plt.subplots(figsize=(8, 4.5), dpi=150, facecolor=SURFACE)
     ax.set_facecolor(SURFACE)
-    ax.plot(t, 100 * fresh, color=SERIES_1, linewidth=2, label="Simulation (CFD)")
+    transient_file = case_dir / "fresh_fraction_transient.csv"
+    if transient_file.exists():
+        # Benchmark case: show both methods (PLAN.md §5, options A and B).
+        ax.plot(t, 100 * fresh, color=SERIES_1, linewidth=2, label="Steady flow + tracer (A)")
+        tb = np.loadtxt(transient_file, delimiter=",", skiprows=1)
+        ax.plot(tb[:, 0], 100 * tb[:, 1], color=SERIES_2, linewidth=2, label="Time-varying flow, URANS (B)")
+    else:
+        ax.plot(t, 100 * fresh, color=SERIES_1, linewidth=2, label="Simulation (CFD)")
     if flow > 1e-6:
         mixed = 1 - np.exp(-t * flow / volume)  # every bit of incoming air mixes instantly
-        ax.plot(t, 100 * mixed, color=MUTED, linewidth=1.5, linestyle="--", label="Perfectly mixed room")
+        ax.plot(t, 100 * mixed, color=MUTED, linewidth=1.5, linestyle="--", label="Perfectly mixed, same through-flow")
+    # Show at least 5 min, more if 90 % is reached later (in whole minutes).
+    x_max = min(300 if not np.isfinite(t90) or t90 < 250 else 60 * np.ceil(t90 * 1.2 / 60), t[-1])
+    ax.set_xlim(0, x_max)
     if np.isfinite(t90):
         ax.axvline(t90, color=MUTED, linewidth=0.8, linestyle=":")
-        ax.annotate(f"90 % replaced after {t90:.0f} s", xy=(t90, 90), xytext=(t90 + 12, 70), color=INK, fontsize=9,
+        on_right = t90 < 0.6 * x_max  # put the label where there is room
+        ax.annotate(f"90 % replaced after {t90:.0f} s", xy=(t90, 90), xytext=(t90 + (12 if on_right else -12), 70 if on_right else 45),
+                    ha="left" if on_right else "right", color=INK, fontsize=9,
                     arrowprops=dict(arrowstyle="-", color=MUTED, linewidth=0.8))
-    ax.set_xlim(0, min(300, t[-1]))
     ax.set_ylim(0, 100)
     ax.set_xlabel("Time after opening the windows [s]", color=INK)
     ax.set_ylabel("Air replaced [%]", color=INK)

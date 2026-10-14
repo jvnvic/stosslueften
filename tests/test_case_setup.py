@@ -15,7 +15,7 @@ def test_wind_profile_matches_the_log_law(make_config):
     assert u_star / 0.40 * math.log((H + z0) / z0) == pytest.approx(cfg.wind_speed_ms)
 
 
-@pytest.mark.parametrize("stage", ["flow", "tracer"])
+@pytest.mark.parametrize("stage", ["flow", "tracer", "transient"])
 def test_all_placeholders_are_filled(make_config, tmp_path, stage):
     cfg = make_config("same_wall", w1=(1.4, "turn", 45), w2=(3.6, "tilt", 6))
     write_case_files(cfg, tmp_path, stage)
@@ -26,9 +26,13 @@ def test_all_placeholders_are_filled(make_config, tmp_path, stage):
         assert "internalField   uniform (0 3 0);" in (tmp_path / "0" / "U").read_text()
         monitors = (tmp_path / "system" / "monitors").read_text()
         assert "window1Flow" in monitors and "window2Flow" in monitors
-    else:
+    elif stage == "tracer":
         control = (tmp_path / "system" / "controlDict").read_text()
         assert "endTime         600;" in control and "deltaT          0.2;" in control
+    else:
+        control = (tmp_path / "system" / "controlDict").read_text()
+        assert "endTime         660;" in control and "maxCo           10;" in control  # 60 s spin-up + 600 s
+        assert "timeStart       60;" in (tmp_path / "system" / "monitors").read_text()
 
 
 def test_patch_types_are_set(tmp_path):

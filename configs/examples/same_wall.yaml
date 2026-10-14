@@ -42,3 +42,5 @@ flow:
   n_procs: 8                  # CPU cores used for one case
   tracer_duration_s: 600      # simulated time of the air replacement (10 min)
   tracer_time_step_s: 0.2     # time step of the tracer solver
+  transient_spinup_s: 60      # transient comparison run: flow-only time before the tracer starts
+  transient_max_courant: 10   # transient comparison run: time step limit

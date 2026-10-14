@@ -1,0 +1,39 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+
+// Transient comparison run (PLAN.md §5, option B): unsteady RANS flow with
+// pimpleFoam, starting from the steady solution. After a flow-only spin-up the
+// tracer is released and transported by the time-varying flow.
+
+libs            (atmosphericModels);
+
+application     pimpleFoam;
+
+startFrom       startTime;
+startTime       0;
+stopAt          endTime;
+endTime         @TRANSIENT_END@;        // spin-up + tracer duration [s]
+deltaT          0.001;                  // first step only, then set by maxCo
+adjustTimeStep  yes;
+maxCo           @MAX_COURANT@;
+maxDeltaT       0.05;
+
+writeControl    adjustableRunTime;
+writeInterval   30;
+purgeWrite      0;
+writeFormat     binary;
+writePrecision  8;
+writeCompression off;
+timeFormat      general;
+timePrecision   6;
+runTimeModifiable true;
+
+functions
+{
+    #include "monitors"
+}

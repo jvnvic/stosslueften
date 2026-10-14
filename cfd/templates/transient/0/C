@@ -1,0 +1,37 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      C;
+}
+
+// Tracer for the original indoor air: setFields sets C = 1 in the room at t = 0,
+// outdoor air is 0. The room average of C is the share of air not yet replaced.
+
+dimensions      [0 0 0 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    inlet
+    {
+        type            fixedValue;     // fresh outdoor air
+        value           uniform 0;
+    }
+    "(outlet|top)"
+    {
+        type            inletOutlet;    // leaves freely, anything flowing back in is fresh
+        inletValue      uniform 0;
+        value           uniform 0;
+    }
+    sides
+    {
+        type            symmetry;
+    }
+    "(ground|building|room_walls|sashes)"
+    {
+        type            zeroGradient;
+    }
+}

@@ -16,6 +16,7 @@ cases/<case_id>/fresh_fraction.csv.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import os
 import re
@@ -55,7 +56,8 @@ def _run_solver(solver: str, case_dir: Path, n_procs: int, reconstruct: list[str
         _foam([solver], case_dir)
         return
     _foam(["decomposePar", "-force"], case_dir)
-    _foam(["mpirun", "-np", str(n_procs), solver, "-parallel"], case_dir, solver)
+    # --bind-to none: let the OS spread processes over all cores, also when two cases run at once
+    _foam(["mpirun", "--bind-to", "none", "-np", str(n_procs), solver, "-parallel"], case_dir, solver)
     _foam(["reconstructPar", *reconstruct], case_dir)
     for processor_dir in case_dir.glob("processor*"):
         shutil.rmtree(processor_dir)
@@ -126,13 +128,16 @@ def prepare_tracer(cfg: CaseConfig, case_dir: Path) -> Path:
     return tracer_dir
 
 
+def _save_curve(path: Path, t: np.ndarray, fresh: np.ndarray, duration_s: float) -> None:
+    """Store the fresh_fraction curve every second (the solvers write every time step)."""
+    seconds = np.arange(0, duration_s + 1e-9, 1.0)
+    curve = np.column_stack([seconds, np.interp(seconds, t, fresh)])
+    np.savetxt(path, curve, delimiter=",", header="time_s,fresh_fraction", comments="", fmt=["%.0f", "%.6f"])
+
+
 def tracer_summary(cfg: CaseConfig, case_dir: Path, tracer_dir: Path) -> dict:
     t, fresh = fresh_fraction_curve(tracer_dir)
-    # Store the curve every second (the solver writes every time step).
-    seconds = np.arange(0, cfg.flow.tracer_duration_s + 1e-9, 1.0)
-    curve = np.column_stack([seconds, np.interp(seconds, t, fresh)])
-    np.savetxt(case_dir / "fresh_fraction.csv", curve, delimiter=",", header="time_s,fresh_fraction",
-               comments="", fmt=["%.0f", "%.6f"])
+    _save_curve(case_dir / "fresh_fraction.csv", t, fresh, cfg.flow.tracer_duration_s)
     c_min, c_max = tracer_bounds(tracer_dir)
     room_max = read_dat(tracer_dir / "postProcessing" / "roomTracerMax" / "0" / "volFieldValue.dat")
     metrics = tracer_metrics(t, fresh, cfg.flow.tracer_duration_s)
@@ -144,26 +149,82 @@ def tracer_summary(cfg: CaseConfig, case_dir: Path, tracer_dir: Path) -> dict:
     }
 
 
+# --- Stage 3 (comparison, PLAN.md §5 option B): time-varying flow with the tracer ----
+
+
+def prepare_transient(cfg: CaseConfig, case_dir: Path) -> Path:
+    """Transient case in case_dir/transient, starting from the steady solution."""
+    transient_dir = case_dir / "transient"
+    if transient_dir.exists():
+        shutil.rmtree(transient_dir)
+    write_case_files(cfg, transient_dir, "transient")
+    shutil.copytree(case_dir / "constant", transient_dir / "constant")
+    steady = case_dir / _latest_time(case_dir)
+    for field in ("U", "p", "k", "omega", "nut", "phi"):
+        shutil.copy(steady / field, transient_dir / "0" / field)
+    _foam(["setFields"], transient_dir)  # C = 1 in the room
+    return transient_dir
+
+
+def transient_summary(cfg: CaseConfig, case_dir: Path, transient_dir: Path) -> dict:
+    spinup = cfg.flow.transient_spinup_s
+    t, fresh = fresh_fraction_curve(transient_dir, release_time=spinup)
+    _save_curve(case_dir / "fresh_fraction_transient.csv", t, fresh, cfg.flow.tracer_duration_s)
+    c_min, c_max = tracer_bounds(transient_dir)
+    log = (transient_dir / "log.pimpleFoam").read_text(errors="replace")
+    n_steps = len(re.findall(r"^Time = ", log, re.M))
+    summary = {k: round(v, 4) for k, v in tracer_metrics(t, fresh, cfg.flow.tracer_duration_s).items()}
+    for window in ("window1", "window2"):
+        flow = read_dat(transient_dir / "postProcessing" / f"{window}Flow" / "0" / "surfaceFieldValue.dat")
+        flow = flow[flow[:, 0] > spinup, -1] * 3600  # m^3/h, after the spin-up
+        summary[f"{window}_net_inflow_mean_m3h"] = round(float(flow.mean()), 1)
+        summary[f"{window}_net_inflow_std_m3h"] = round(float(flow.std()), 1)
+    return {
+        **summary,
+        "tracer_min": float(f"{c_min:.3g}"),
+        "tracer_max": float(f"{c_max:.6g}"),
+        "time_steps": n_steps,
+        "mean_time_step_s": round((spinup + cfg.flow.tracer_duration_s) / max(n_steps, 1), 4),
+    }
+
+
 # --- Command line ----------------------------------------------------------------
 
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description="Simulate wind flow and air replacement for one case.")
     parser.add_argument("--config", required=True, type=Path, help="case YAML file, e.g. configs/default.yaml")
-    parser.add_argument("--tracer-only", action="store_true", help="reuse the existing flow result, rerun the tracer")
+    stage = parser.add_mutually_exclusive_group()
+    stage.add_argument("--tracer-only", action="store_true", help="reuse the existing flow result, rerun the tracer")
+    stage.add_argument("--transient", action="store_true",
+                       help="comparison run with time-varying flow, starting from the existing flow result (slow)")
+    parser.add_argument("--procs", type=int, help="CPU cores for this run (overrides flow.n_procs in the config)")
     args = parser.parse_args(argv)
     if "WM_PROJECT_DIR" not in os.environ:
         raise SystemExit("OpenFOAM is not loaded: run `of` (or source /opt/OpenFOAM/OpenFOAM-v2606/etc/bashrc) first")
     try:
         cfg = load_config(args.config)
+        if args.procs:
+            cfg = dataclasses.replace(cfg, flow=dataclasses.replace(cfg.flow, n_procs=args.procs))
         case_dir = CASES / cfg.case_id
         summary_file = case_dir / "summary.json"
         timings = {}
-        if args.tracer_only:
+        if args.tracer_only or args.transient:
             if not summary_file.exists():
-                raise RuntimeError(f"no flow result in {case_dir}: run without --tracer-only first")
+                raise RuntimeError(f"no flow result in {case_dir}: run without --tracer-only/--transient first")
             summary = json.loads(summary_file.read_text())
-        else:
+        if args.transient:
+            started = time.perf_counter()
+            transient_dir = prepare_transient(cfg, case_dir)
+            _run_solver("pimpleFoam", transient_dir, cfg.flow.n_procs, [])
+            summary["transient"] = transient_summary(cfg, case_dir, transient_dir)
+            summary["transient"]["seconds"] = round(time.perf_counter() - started, 1)
+            summary_file.write_text(json.dumps(summary, indent=2))
+            for key, value in summary["transient"].items():
+                if not key.startswith("fresh_frac_") or key.endswith(("060s", "120s", "300s", "600s")):
+                    print(f"{key:>30}: {value}")
+            return
+        if not args.tracer_only:
             started = time.perf_counter()
             prepare_flow(cfg, case_dir)
             meshed = time.perf_counter()
