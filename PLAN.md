@@ -104,6 +104,28 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 
 **Decision M1: option A (steady flow + frozen tracer) for the sweep.** It is 25–30× cheaper, and the difference to B (6–12 %) is reported as a known systematic uncertainty of the dataset.
 
+**Repeat on the snappyHexMesh mesh (2026-10-14).** The same two cases and settings as above, on the medium snappy mesh (103k cells, §6). The B runs ran side by side with 4 cores each.
+
+| Case | Method | t90 | τ | Air replaced after 60 s | after 600 s | Window flow | Compute |
+|---|---|---|---|---|---|---|---|
+| opposite walls (default) | A | 76.5 s | 33.5 s | 83.4 % | 100 % | 5,252 m³/h | 3.4 min (8 cores) |
+| | B | 73.8 s (−4 %) | 32.6 s (−3 %) | 84.5 % | 100 % | 5,221 ± 73 m³/h | 48 min* |
+| same wall | A | 581 s | 249 s | 22.1 % | 90.7 % | ≈ 0 (−21 / −4 m³/h) | 3.3 min (8 cores) |
+| | B | 443 s (−24 %) | 190 s (−24 %) | 27.9 % | 95.3 % | 235 ± 150 m³/h, swinging between −650 and +840 | 63 min |
+
+\*Tracer simulated for 330 s only (99.99 % replaced after 300 s).
+
+- **Cross-ventilation: A and B agree within 4 %.** This is closer than on the tetrahedral mesh (6 %), and A is now slightly slower, not faster.
+- **Same wall: A is 24 % slower than B.** The steady solution has almost no flow from one window to the other. In B, the flow through the windows swings strongly, around a stable mean through-flow of about 235 m³/h (100 s block averages 196–296 m³/h). A cannot represent that exchange.
+- **Plausibility:** the single-sided formulas give τ ≈ 210–250 s for single-sided exchange alone, which matches A (249 s). Adding B's 235 m³/h of through-flow gives τ ≈ 180 s, which matches B (190 s).
+- **On the tetrahedral mesh, the same-wall difference had the opposite sign** (A 12 % faster), because that steady solution had a through-flow of 785 m³/h. In weak-flow cases, the steady result depends on which of several steady states the solver ends up in. Those cases carry the largest uncertainty of method A.
+- **Cost of B on this mesh:** two runs side by side each advance about 0.14 simulated s per second. A full case (60 s spin-up and 600 s tracer) takes about 80 min on 4 cores, which is about 40 min per case at two cases at a time. 180 cases would take about 5 days of continuous compute, versus about 15 h for A.
+
+**Decision M1 is under review (team decision).** The decision rule above (B only at ≤ 30 min per case) still points to A. But A's error for weak-flow cases (same wall; probably also tilted windows) is now about 24 %, and those cases make up a large part of the sweep. Options:
+1. Keep A for all cases. Report ±4 % for cross-ventilation and up to −24 % (A too slow) for single-sided cases.
+2. Use B for all cases: about 5 days of compute. B would first need its own short mesh check.
+3. First compare A and B on one or two cases with a tilted window (about 1–1.5 h), then choose between 1 and 2.
+
 ## 6. Checks before the big sweep
 
 - `checkMesh` passes for all 3 layouts × both modes.
@@ -144,7 +166,7 @@ Findings:
   - **Residuals:** about 1e-5 instead of about 1e-3, and the tracer stays exactly within 0…1.
   - **Window flow converges with refinement** (extrapolated ≈ 4,980 m³/h), so medium is about 5 % high.
   - **Decision: `snappyHexMesh` with the medium sizes is the default mesher.** About 5 min per case including the tracer, so 180 cases take about 15 h.
-  - **Note:** the solver benchmark (§5) ran on the old tetrahedral mesh. On the new mesh, the default case's flow is 32 % lower and t90 14 % higher than on that mesh.
+  - **Note:** the first solver benchmark (§5) ran on the old tetrahedral mesh. On the new mesh, the default case's flow is 32 % lower and t90 14 % higher than on that mesh. The benchmark was repeated on the new mesh (§5).
 
 ## 7. Schedule
 
@@ -167,10 +189,10 @@ Findings:
 
 ## 9. Still open / next steps (state 2026-10-14, end of day 1)
 
-**Done:** milestone M1 (solver: option A) and the mesh decision (snappyHexMesh medium). About 5 min per case, 64 MB on disk per case.
+**Done:** the mesh decision (snappyHexMesh medium), about 5 min per case and 64 MB on disk per case. The solver benchmark was repeated on this mesh (§5, 2026-10-14).
 
 Next, in this order:
-1. **Repeat the solver benchmark (§5) on the snappyHexMesh mesh.** The A/B comparison ran on the old tetrahedral mesh. It needs snappy versions of `configs/benchmark/same_wall.yaml` and the default case run with `--transient` (about 2–3 h; overnight is fine).
+1. **Decide M1 again (§5):** method A for all cases, B for all cases, or first one or two more comparisons with a tilted window. Whether B is chosen also changes the sweep's compute time (about 15 h for A, about 5 days for B).
 2. **Sweep generator.** Latin hypercube sampling of the inputs (§2), writing one YAML per case (e.g. `configs/sweep/`). Train set of about 150 and a separate test set of about 30; invalid samples are redrawn and logged.
 3. **Dataset writer:** `results/summary.csv` with the columns of §3, plus `results/timeseries/<case_id>.csv`. Freeze the columns (M2). Still missing from §3: the inputs as columns, `status`/`error_message`, `git_commit`.
 4. **Run the sweep with `cfd.queue`** (detached; `--resume` after interruptions) and watch it with `analysis.monitor`.

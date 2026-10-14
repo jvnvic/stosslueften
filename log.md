@@ -287,3 +287,15 @@ Template:
   - Started option B (transient) for the default and the same-wall case, in parallel with 4 cores each. As in the first benchmark, the default's tracer phase is cut to 300 s.
   - Added `--transient` to `cfd.queue`, so comparison runs can also be queued and show up in the monitor's queue list. The monitor marks such queues as "transient".
 - **Human decisions / review:** Daniel asked to continue with the benchmark repeat. He asked that the next runs go through the queue so they show up in the monitor, and checked that the work matches PLAN.md §9 step 1.
+
+## 2026-10-14 — Solver benchmark on the snappy mesh: results
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Finished option B for both benchmark cases on the snappy mesh.
+    - Opposite walls: A and B agree within 4 %.
+    - Same wall: A is 24 % too slow (t90 581 s vs 443 s). In B, the flow at the windows swings strongly around a mean through-flow of about 235 m³/h. The steady flow has almost none.
+    - Checked against the single-sided ventilation formulas; both results are plausible for their through-flow.
+  - Wrote the results into PLAN.md §5, set decision M1 to "under review" with three options, and made it the next step in §9. Updated the README benchmark section and its two plots, and the status line in `AGENTS.md`.
+  - Problem found: the script's live shortening of the default run's end time (to 360 s) was ignored. OpenFOAM only re-reads a file whose timestamp is more than 5 s newer than its last read (`fileModificationSkew`), and the edit came 3 s after the start. The run went past 360 s until Daniel noticed. It was then set to 390 s and stopped there.
+- **Human decisions / review:** Daniel noticed the run going over time. The decision on M1 (method A, B, or more comparisons first) is left to the team.

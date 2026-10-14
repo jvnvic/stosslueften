@@ -14,7 +14,7 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | Geometry and mesh generator | ✅ |
 | OpenFOAM case: steady wind flow | ✅ first test case runs |
 | Tracer (air replacement) and metrics | ✅ runs on the frozen steady flow |
-| Solver benchmark: comparison with a fully transient run | ✅ steady method chosen (see below) |
+| Solver benchmark: comparison with a fully transient run | ⚠️ repeated on the new mesh; method choice under review (see below) |
 | Mesh study | ✅ snappyHexMesh, medium cell sizes (see PLAN.md §6) |
 | Parameter sweep, dataset | planned |
 
@@ -48,12 +48,16 @@ The dataset uses a fast method:
 We compared it with a much more expensive one:
 - **(B)** compute the time-varying flow with the tracer (URANS), about 25–30× slower.
 
-We ran both on two cases: windows on opposite walls, and both windows on the same wall. The second is the hardest case for method A. This benchmark ran on the earlier tetrahedral mesh.
+We ran both on two cases: windows on opposite walls, and both windows on the same wall. The second is the hardest case for method A.
 
 ![Benchmark, opposite walls](docs/images/benchmark_default.png)
 ![Benchmark, same wall](docs/images/benchmark_same_wall.png)
 
-The two methods agree within 6 % (opposite walls) and 12 % (same wall). Method A replaces the air slightly faster. We use method A for the dataset and report this difference as a known uncertainty. Details are in [PLAN.md §5](PLAN.md).
+- **Opposite walls:** the two methods agree within 4 %.
+- **Same wall:** method A is 24 % too slow. In the time-varying flow, air swings in and out of the windows, and on average about 235 m³/h flows from one window to the other. The steady flow has almost none of that.
+- **Cost:** method B costs about 40 min per case, compared with about 5 min for A. That would be about 5 days of compute for the whole sweep instead of about 15 h.
+
+The team still has to decide which method the dataset uses. Details are in [PLAN.md §5](PLAN.md).
 
 ## What is simulated
 
