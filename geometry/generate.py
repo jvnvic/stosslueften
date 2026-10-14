@@ -12,7 +12,6 @@ its boundary surfaces are grouped into the patches listed in PATCHES.
 from __future__ import annotations
 
 import argparse
-import os
 import time
 from pathlib import Path
 from typing import NamedTuple
@@ -167,8 +166,10 @@ def _set_mesh_sizes(cfg: CaseConfig, placed, patches: dict[str, list[int]]) -> N
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
-    gmsh.option.setNumber("Mesh.Algorithm3D", 10)  # HXT: fast and multi-threaded
-    gmsh.option.setNumber("General.NumThreads", os.cpu_count() or 1)
+    gmsh.option.setNumber("Mesh.Algorithm3D", 10)  # HXT
+    # One thread: multi-threaded meshing gives a slightly different mesh on every run,
+    # and the flow results react to that (PLAN.md §6). The same config must give the same mesh.
+    gmsh.option.setNumber("General.NumThreads", 1)
     gmsh.option.setNumber("Mesh.OptimizeNetgen", 1)
 
 

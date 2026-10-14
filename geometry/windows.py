@@ -26,6 +26,11 @@ UP = np.array([0.0, 0.0, 1.0])
 # Open sashes of the two windows must stay at least this far apart (plan view),
 # so the air gap between them can still be meshed.
 MIN_SASH_GAP_M = 0.1
+# The sash overlaps the opening on all sides (like a real sash on its frame), and the
+# hinge post reaches a bit further. Then no sash or post surface lies exactly in a
+# plane of the opening; such touching surfaces give razor-thin, unusable mesh cells.
+SASH_OVERLAP_M = 0.025
+POST_EXTENSION_M = SASH_OVERLAP_M + 0.02
 
 # Which walls each layout uses (PLAN.md §1). The wind always comes from the south.
 LAYOUT_WALLS = {
@@ -127,17 +132,21 @@ class PlacedWindow:
         return self._wall_box((0, self.size.width_m), (-self.wall_thickness_m, 0), (0, self.size.height_m))
 
     def closed_sash_corners(self) -> np.ndarray:
-        """Sash plate in the closed position, centred on the inner wall face."""
-        half = self.size.sash_thickness_m / 2
-        return self._wall_box((0, self.size.width_m), (-half, half), (0, self.size.height_m))
+        """Sash plate in the closed position, centred on the inner wall face, overlapping the opening."""
+        half, a = self.size.sash_thickness_m / 2, SASH_OVERLAP_M
+        return self._wall_box((-a, self.size.width_m + a), (-half, half), (-a, self.size.height_m + a))
 
     def sash_corners(self) -> np.ndarray:
         return rotate(self.closed_sash_corners(), self.hinge_point, self.hinge_axis, self.rotation_rad)
 
     def hinge_post(self) -> tuple[np.ndarray, np.ndarray, float]:
-        """Hinge post cylinder as (start point, axis vector with full length, radius)."""
+        """Hinge post cylinder as (start point, axis vector with full length, radius).
+
+        It runs along the hinge edge of the opening and sticks out by POST_EXTENSION_M at both ends.
+        """
         length = self.size.height_m if self.window.mode == "turn" else self.size.width_m
-        return self.hinge_point, self.hinge_axis * length, self.size.hinge_radius_m
+        start = self.hinge_point - self.hinge_axis * POST_EXTENSION_M
+        return start, self.hinge_axis * (length + 2 * POST_EXTENSION_M), self.size.hinge_radius_m
 
     def footprint_xy(self) -> np.ndarray:
         """Plan-view outline (x, y) of the open sash plus hinge post, as a convex polygon."""
@@ -152,9 +161,11 @@ class PlacedWindow:
         # Rotate the point back to the closed position and test the closed plate box.
         p = rotate(point, self.hinge_point, self.hinge_axis, -self.rotation_rad)[0] - self.start
         u, n, z = p @ self.wall.along, p @ self.wall.inward, p @ UP
-        half = self.size.sash_thickness_m / 2
+        half, a = self.size.sash_thickness_m / 2, SASH_OVERLAP_M
         in_plate = (
-            -tol <= u <= self.size.width_m + tol and -half - tol <= n <= half + tol and -tol <= z <= self.size.height_m + tol
+            -a - tol <= u <= self.size.width_m + a + tol
+            and -half - tol <= n <= half + tol
+            and -a - tol <= z <= self.size.height_m + a + tol
         )
         start, axis, r = self.hinge_post()
         length = np.linalg.norm(axis)

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from cfd.config import ConfigError, Window
-from geometry.windows import PlacedWindow, place_windows, walls
+from geometry.windows import SASH_OVERLAP_M, PlacedWindow, place_windows, walls
 
 
 def _placed(cfg, wall_name, window):
@@ -18,7 +18,8 @@ def test_sash_opens_into_the_room(make_config, wall_name, mode, angle, hinge):
     pw = _placed(cfg, wall_name, Window(2.0, mode, angle, hinge))
 
     inward = (pw.sash_corners() - pw.wall.origin) @ pw.wall.inward
-    free_edge = size.width_m if mode == "turn" else size.height_m
+    # The sash reaches from the hinge to the free edge of the opening plus its overlap.
+    free_edge = (size.width_m if mode == "turn" else size.height_m) + SASH_OVERLAP_M
     a = np.radians(angle)
     # The free edge of the sash swings into the room by free_edge * sin(angle).
     assert inward.max() == pytest.approx(free_edge * np.sin(a) + size.sash_thickness_m / 2 * np.cos(a))

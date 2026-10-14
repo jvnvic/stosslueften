@@ -214,3 +214,13 @@ Template:
   - Showed that Gmsh's multi-threaded meshing is not reproducible (different meshes from the same config), while single-threaded meshing is.
   - Documented the findings in PLAN.md §6. Recommended reproducible meshing first, then testing a better mesh type before choosing mesh settings.
 - **Human decisions / review:** Daniel asked for the best mesh setting. The AI could not give one yet, because the data show the results are not mesh-independent.
+
+## 2026-10-14 — Reproducible meshing, sash geometry fix, polyhedral test
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - **Reproducible meshing:** set Gmsh to single-threaded meshing. Verified that two runs now give byte-identical mesh files (0.8 s per mesh).
+  - **Polyhedral test:** tested converting the tetrahedral mesh to polyhedral cells (`polyDualMesh`, several feature angles and options). It reduced 160k tets to 32–41k polyhedra, but `checkMesh` always failed.
+  - **Geometry fix:** located the invalid faces with `checkMesh -writeSets`. Some came from sash and post surfaces touching the planes of the opening. The sash now overlaps the opening by 2.5 cm (like a real sash) and the hinge post extends 2 cm further, and the config check makes sure the sash corner stays inside the post. Tet quality improved from 0.28 to 0.33, and all 114 tests pass.
+  - **Result:** the remaining invalid polyhedral faces (15 at best) sit at all sharp concave window edges, a known limitation of `polyDualMesh`. Recommended switching to the hex-dominant `snappyHexMesh` (the plan's fallback).
+- **Human decisions / review:** Daniel approved steps 1 (reproducible meshing) and 2 (polyhedral test).

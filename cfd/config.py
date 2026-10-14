@@ -181,9 +181,12 @@ def _check_values(cfg: CaseConfig) -> None:
         size.sill_height_m + size.height_m < room.height_m,
         "window_size: sill_height_m + height_m must be below the ceiling (room.height_m)",
     )
+    # The sash overlaps the opening by 2.5 cm (geometry/windows.py); its corner next to the
+    # hinge must lie inside the hinge post, otherwise a thin gap appears there.
+    corner = (0.025**2 + (size.sash_thickness_m / 2) ** 2) ** 0.5
     require(
-        size.sash_thickness_m / 2 < size.hinge_radius_m < cfg.clearance_m,
-        "window_size.hinge_radius_m must be larger than half the sash thickness and smaller than clearance_m",
+        corner < size.hinge_radius_m < cfg.clearance_m,
+        f"window_size.hinge_radius_m must be larger than {corner:.3f} m (sash corner) and smaller than clearance_m",
     )
     require(
         mesh.window_m <= mesh.room_m <= mesh.building_m <= mesh.far_m,

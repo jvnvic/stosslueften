@@ -123,7 +123,13 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 Findings:
 - **Every run settles into a stable state after about 500 iterations, but not the same one.** The steady flow has several possible states, and small mesh differences decide which one the solver ends up in. The iteration count itself matters little once a state is reached.
 - **Meshing was not reproducible.** Parallel (8-thread) Gmsh meshing gives a slightly different mesh each time; single-threaded meshing gives identical meshes.
-- **Consequence:** results are not mesh-independent yet. Medium-mesh results scatter by about ±10 %, and the fine mesh differs systematically (−27 % window flow). No "best" setting can be chosen from this data. Next step: reproducible meshing, then a better mesh type (polyhedral or hex-dominant `snappyHexMesh`, see §8), and repeat the study.
+- **Consequence:** results are not mesh-independent yet. Medium-mesh results scatter by about ±10 %, and the fine mesh differs systematically (−27 % window flow). No "best" setting can be chosen from this data.
+
+**Follow-up (2026-10-14):**
+- **Meshing is now reproducible.** Gmsh runs single-threaded: the same config gives a byte-identical mesh in 0.8 s.
+- **Geometry fix:** the sash overlaps the opening by 2.5 cm on all sides, and the hinge post sticks out 2 cm beyond the sash, so no surfaces touch in the opening planes. Tet quality rose from 0.28 to 0.33.
+- **Polyhedral cells (`polyDualMesh`) were rejected.** At the sharp concave window edges, 15–370 faces stay invalid, depending on the options, so `checkMesh` fails.
+- **Next:** hex-dominant `snappyHexMesh` (§8), then repeat the mesh study with a perturbation test.
 
 ## 7. Schedule
 
