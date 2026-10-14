@@ -70,7 +70,7 @@ def build_model(cfg: CaseConfig, placed: tuple[PlacedWindow, ...]) -> tuple[int,
     sashes = []
     for pw in placed:
         plate = _add_box(pw.closed_sash_corners())
-        occ.rotate([(3, plate)], *pw.start, *pw.hinge_axis, pw.rotation_rad)
+        occ.rotate([(3, plate)], *pw.hinge_point, *pw.hinge_axis, pw.rotation_rad)
         start, axis, radius = pw.hinge_post()
         sashes += [plate, occ.addCylinder(*start, *axis, radius)]
 

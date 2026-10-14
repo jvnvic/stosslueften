@@ -96,3 +96,13 @@ Template:
   - Replaced the wireframe screenshot in the README with a three-layout overview (`docs/images/layouts.png`) and added a picture of the default case.
   - Added PyVista and VTK to `requirements.txt` and added a test.
 - **Human decisions / review:** Daniel asked for more appealing pictures than the Gmsh wireframe screenshot.
+
+## 2026-10-14 — Hinge side setting
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Explained that the hinge side had been fixed by a coordinate convention. Seen from inside, south and east windows were hinged on the right and north and west windows on the left. The AI pointed out that this matters for the windward window, because a turned sash scoops or blocks the wind depending on its hinge side.
+  - Added a required `hinge: left | right` setting per window, seen from inside the room facing the window. It only changes the geometry in turn mode.
+  - Updated the configs, the geometry, the render titles and the tests (104 pass), including checks for each wall and hinge side and for a collision that a different hinge side avoids.
+  - Re-rendered the README pictures.
+- **Human decisions / review:** Daniel decided to add the hinge side as a setting. Whether the sweep samples it is decided after the benchmark.

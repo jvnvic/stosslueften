@@ -15,6 +15,7 @@ import yaml
 
 LAYOUTS = ("same_wall", "opposite_walls", "adjacent_walls")
 MODES = ("turn", "tilt")
+HINGES = ("left", "right")  # hinge side of the turn sash, seen from inside the room facing the window
 # Allowed opening angles in degrees. Below the minimum the sash is almost closed
 # and the remaining gap would need extremely small mesh cells.
 ANGLE_LIMITS_DEG = {"turn": (5.0, 90.0), "tilt": (2.0, 15.0)}
@@ -46,6 +47,7 @@ class Window:
     x_m: float  # window centre, measured along the wall (PLAN.md §1)
     mode: str  # "turn" or "tilt"
     angle_deg: float
+    hinge: str  # "left" or "right", seen from inside the room; only changes the geometry in turn mode
 
 
 @dataclass(frozen=True)
@@ -141,6 +143,10 @@ def _check_values(cfg: CaseConfig) -> None:
     for name in ("window1", "window2"):
         window = getattr(cfg, name)
         require(window.mode in MODES, f"{name}.mode {window.mode!r}: must be 'turn' or 'tilt'")
+        require(
+            window.hinge in HINGES,
+            f"{name}.hinge {window.hinge!r}: must be 'left' or 'right' (seen from inside the room, facing the window)",
+        )
         lo, hi = ANGLE_LIMITS_DEG[window.mode]
         require(
             lo <= window.angle_deg <= hi,

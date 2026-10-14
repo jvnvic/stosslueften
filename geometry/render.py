@@ -96,7 +96,7 @@ def add_case(plotter: pv.Plotter, cfg: CaseConfig, title: str) -> None:
     plotter.add_mesh(arrow, color=COLORS["wind"], **SURFACE)
     plotter.add_text(title, position="upper_edge", font_size=11, color="#333333")
 
-    plotter.camera.focal_point = (W / 2, D / 2 - 0.6, 0.4)
+    plotter.camera.focal_point = (W / 2, D / 2 - 0.6, 1.0)
     plotter.camera.position = (W / 2 + 6.0, D / 2 - 9.5, 11.5)  # from the south-east, above
     plotter.camera.up = (0, 0, 1)
     plotter.camera.view_angle = 30
@@ -113,12 +113,12 @@ def _add_lights(plotter: pv.Plotter, cfg: CaseConfig) -> None:
 
 def describe(cfg: CaseConfig) -> str:
     def window(w):
-        return f"{w.mode} {w.angle_deg:g}°"
+        return f"turn {w.angle_deg:g}° ({w.hinge} hinge)" if w.mode == "turn" else f"tilt {w.angle_deg:g}°"
 
-    return f"{cfg.layout.replace('_', ' ')}: {window(cfg.window1)} / {window(cfg.window2)}"
+    return f"{cfg.layout.replace('_', ' ')}\n{window(cfg.window1)} / {window(cfg.window2)}"
 
 
-def render(configs: list[CaseConfig], out: Path, panel_size=(900, 700)) -> None:
+def render(configs: list[CaseConfig], out: Path, panel_size=(900, 760)) -> None:
     plotter = pv.Plotter(off_screen=True, shape=(1, len(configs)), border=False,
                          window_size=(panel_size[0] * len(configs), panel_size[1]))
     plotter.set_background(COLORS["background"])

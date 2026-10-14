@@ -11,7 +11,7 @@ Agreed 2026-10-14. Deadline: less than 6 weeks away; the exact date is still to 
 | Room (inside) | 5.0 m (x) × 4.0 m (y) × 2.5 m (z). Walls and roof are 0.3 m thick, the floor sits on the ground, and the building is 2.8 m tall. |
 | Axes | Origin at the inner south-west floor corner. x points east, y north, z up. |
 | Windows | Single Dreh-Kipp sash, 1.0 m wide × 1.25 m high, sill at 0.9 m. The sash is a 0.06 m solid plate that opens inward and turns about a solid hinge post (r = 4 cm). The post prevents mesh-breaking thin wedges at the hinge. |
-| Turn mode | Hinge on the window's west side (S/N walls) or south side (E/W walls). |
+| Turn mode | Hinge side set per window with `hinge: left \| right`, seen from inside the room facing the window. |
 | Tilt mode | Hinge at the bottom, fixed at 6°, which gives a ~13 cm gap at the top. |
 | Window position | `x_m` is the distance from the wall's west end (S/N walls) or south end (E/W walls) to the window centre. |
 | Layouts | `same_wall` uses the south wall twice. `opposite_walls` uses south + north. `adjacent_walls` uses south + east. |
@@ -28,6 +28,7 @@ Agreed 2026-10-14. Deadline: less than 6 weeks away; the exact date is still to 
 | `window1_x_m`, `window2_x_m` | 0.7 m to (wall length − 0.7 m), keeping 0.2 m clear of the corners |
 | `window1_mode`, `window2_mode` | `turn` or `tilt`, chosen independently (4 combinations) |
 | `window1_angle_deg`, `window2_angle_deg` | `turn`: 15–90°. `tilt`: fixed at 6°. |
+| `window1_hinge`, `window2_hinge` | `left` or `right`; only matters in turn mode. Whether the sweep samples it or keeps it fixed is decided after the benchmark. |
 | `wind_speed_ms` | 1–5 m/s |
 
 **Sampling:** Latin hypercube (`scipy.stats.qmc`) with fixed seeds. We aim for about 150 training runs plus a separately drawn test set of about 30 runs. The week-1 benchmark sets the final count.
@@ -110,4 +111,5 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 ## 9. Still open
 
 - Exact deadline and deliverables.
+- Whether to sample the hinge side or keep it fixed. Decide after the benchmark, once the affordable number of runs is known.
 - Task split in the team. CFD runs only on Daniel's PC, so teammates could take visualizations, literature and documentation.

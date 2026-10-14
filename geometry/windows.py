@@ -7,10 +7,11 @@ Conventions (PLAN.md §1):
 - Origin at the inner south-west floor corner; x points east, y north, z up.
 - A window's x_m is its centre, measured along the wall from the west end
   (south/north walls) or the south end (west/east walls).
-- Each sash is a plate that turns about a solid hinge post: a vertical post on
-  the window's start side in turn mode, a horizontal post along the sill in
-  tilt mode. The post covers the plate's hinge edge, which avoids paper-thin
-  gaps between sash and wall that could not be meshed.
+- Each sash is a plate that opens into the room about a solid hinge post: a
+  vertical post on the hinge side in turn mode (`hinge: left|right`, seen from
+  inside the room facing the window), a horizontal post along the sill in tilt
+  mode. The post covers the plate's hinge edge, which avoids paper-thin gaps
+  between sash and wall that could not be meshed.
 """
 
 from __future__ import annotations
@@ -80,9 +81,23 @@ class PlacedWindow:
 
     @property
     def start(self) -> np.ndarray:
-        """Opening corner on the inner wall face, on the hinge side, at sill height."""
+        """Opening corner on the inner wall face, at the wall's start side (smaller x_m), at sill height."""
         offset = self.window.x_m - self.size.width_m / 2
         return self.wall.origin + self.wall.along * offset + UP * self.size.sill_height_m
+
+    @property
+    def hinge_at_end(self) -> bool:
+        """True if the turn hinge is on the opening's end side (larger x_m) rather than its start side."""
+        right = np.cross(UP, self.wall.inward)  # "right" for someone inside the room facing the window
+        towards_hinge = right if self.window.hinge == "right" else -right
+        return bool(towards_hinge @ self.wall.along > 0)
+
+    @property
+    def hinge_point(self) -> np.ndarray:
+        """A point on the rotation axis: the hinge-side bottom corner of the opening."""
+        if self.window.mode == "turn" and self.hinge_at_end:
+            return self.start + self.wall.along * self.size.width_m
+        return self.start  # tilt: the axis runs along the whole sill, so the start corner works
 
     @property
     def hinge_axis(self) -> np.ndarray:
@@ -93,7 +108,10 @@ class PlacedWindow:
         """Signed rotation about hinge_axis that opens the sash into the room."""
         # The sash edge opposite the hinge points along the wall (turn) or up (tilt);
         # pick the rotation direction that moves this edge towards the room.
-        free_edge = self.wall.along if self.window.mode == "turn" else UP
+        if self.window.mode == "turn":
+            free_edge = -self.wall.along if self.hinge_at_end else self.wall.along
+        else:
+            free_edge = UP
         sign = np.sign(np.cross(self.hinge_axis, free_edge) @ self.wall.inward)
         return float(sign * np.radians(self.window.angle_deg))
 
@@ -114,12 +132,12 @@ class PlacedWindow:
         return self._wall_box((0, self.size.width_m), (-half, half), (0, self.size.height_m))
 
     def sash_corners(self) -> np.ndarray:
-        return rotate(self.closed_sash_corners(), self.start, self.hinge_axis, self.rotation_rad)
+        return rotate(self.closed_sash_corners(), self.hinge_point, self.hinge_axis, self.rotation_rad)
 
     def hinge_post(self) -> tuple[np.ndarray, np.ndarray, float]:
         """Hinge post cylinder as (start point, axis vector with full length, radius)."""
         length = self.size.height_m if self.window.mode == "turn" else self.size.width_m
-        return self.start, self.hinge_axis * length, self.size.hinge_radius_m
+        return self.hinge_point, self.hinge_axis * length, self.size.hinge_radius_m
 
     def footprint_xy(self) -> np.ndarray:
         """Plan-view outline (x, y) of the open sash plus hinge post, as a convex polygon."""
@@ -132,7 +150,7 @@ class PlacedWindow:
         """True if `point` lies inside or on the open sash plate or its hinge post."""
         point = np.asarray(point, float)
         # Rotate the point back to the closed position and test the closed plate box.
-        p = rotate(point, self.start, self.hinge_axis, -self.rotation_rad)[0] - self.start
+        p = rotate(point, self.hinge_point, self.hinge_axis, -self.rotation_rad)[0] - self.start
         u, n, z = p @ self.wall.along, p @ self.wall.inward, p @ UP
         half = self.size.sash_thickness_m / 2
         in_plate = (

@@ -19,7 +19,7 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 
 - **Room:** 5 × 4 × 2.5 m with two Dreh-Kipp windows.
 - **Window layouts:** both windows on the same wall, on opposite walls, or on adjacent walls.
-- **Window opening:** each window is either turned open (angle 15–90°) or tilted (6°).
+- **Window opening:** each window is either turned open (angle 15–90°, hinged on the left or right) or tilted (6°).
 - **Wind:** comes from the south at 1–5 m/s and blows around the building.
 - **Tracer:** the room starts full of "old air" (a tracer value of 1). We measure how fast fresh outdoor air replaces it.
 - **Output:** each simulation adds one row to `results/summary.csv`, containing the inputs and results such as the fresh-air fraction over time and the time until 90 % of the air is replaced.
@@ -56,7 +56,7 @@ python -m pytest                                                              # 
 To try a different case:
 
 1. Copy `configs/default.yaml` or one of the files in `configs/examples/`.
-2. Change the values (layout, window positions, modes, angles, wind speed).
+2. Change the values (layout, window positions, modes, angles, hinge sides, wind speed).
 3. Pass the new file to the commands above.
 
 Invalid values stop with a message that says what to fix. `geometry.render` takes several config files at once and puts their pictures side by side.

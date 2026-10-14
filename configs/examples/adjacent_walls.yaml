@@ -5,8 +5,8 @@ case_id: example_adjacent_walls              # becomes the folder name cases/<ca
 
 # --- Varied inputs (sampled in sweeps) ---
 layout: adjacent_walls        # same_wall | opposite_walls | adjacent_walls
-window1: {x_m: 1.5, mode: turn, angle_deg: 60}    # mode: turn | tilt
-window2: {x_m: 2.5, mode: turn, angle_deg: 30}
+window1: {x_m: 1.5, mode: turn, angle_deg: 60, hinge: right}    # mode: turn | tilt; hinge: left | right, seen from inside
+window2: {x_m: 2.5, mode: turn, angle_deg: 30, hinge: left}
 wind_speed_ms: 3.0            # at roof height; wind always comes from the south
 
 # --- Fixed setup (PLAN.md §1) ---

@@ -32,12 +32,18 @@ def test_text_instead_of_number_is_an_error(default_dict):
     "mode, angle, ok", [("turn", 90, True), ("turn", 4, False), ("turn", 95, False), ("tilt", 6, True), ("tilt", 30, False)]
 )
 def test_angle_limits_depend_on_mode(default_dict, mode, angle, ok):
-    default_dict["window2"] = {"x_m": 2.5, "mode": mode, "angle_deg": angle}
+    default_dict["window2"] = {"x_m": 2.5, "mode": mode, "angle_deg": angle, "hinge": "left"}
     if ok:
         config_from_dict(default_dict)
     else:
         with pytest.raises(ConfigError, match="window2.angle_deg"):
             config_from_dict(default_dict)
+
+
+def test_unknown_hinge_is_an_error(default_dict):
+    default_dict["window1"]["hinge"] = "top"
+    with pytest.raises(ConfigError, match="window1.hinge 'top'"):
+        config_from_dict(default_dict)
 
 
 def test_unknown_layout_is_an_error(default_dict):

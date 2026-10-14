@@ -15,24 +15,25 @@ ANGLES = {"turn": (15, 90), "tilt": (6, 6)}
 @pytest.mark.parametrize("layout", LAYOUTS)
 @pytest.mark.parametrize("modes", [("turn", "turn"), ("turn", "tilt"), ("tilt", "turn"), ("tilt", "tilt")])
 @pytest.mark.parametrize("angle_index", [0, 1])
-def test_model_has_one_air_volume_and_all_patches(make_config, layout, modes, angle_index):
+@pytest.mark.parametrize("hinges", [("left", "left"), ("right", "left")])
+def test_model_has_one_air_volume_and_all_patches(make_config, layout, modes, angle_index, hinges):
     x1, x2 = POSITIONS[layout]
-    m1, m2 = modes
-    cfg = make_config(layout, w1=(x1, m1, ANGLES[m1][angle_index]), w2=(x2, m2, ANGLES[m2][angle_index]))
+    (m1, m2), (h1, h2) = modes, hinges
+    cfg = make_config(layout, w1=(x1, m1, ANGLES[m1][angle_index], h1), w2=(x2, m2, ANGLES[m2][angle_index], h2))
     summary = generate(cfg, mesh=False)  # raises if the air volume or any patch is missing
     assert set(summary["surfaces_per_patch"]) == set(PATCHES)
 
 
-@pytest.mark.parametrize("mode, angle", [("turn", 35), ("tilt", 6)])
-def test_gmsh_rotation_matches_numpy(make_config, mode, angle):
-    cfg = make_config("adjacent_walls", w1=(1.5, mode, angle), w2=(2.0, mode, angle))
+@pytest.mark.parametrize("mode, angle, hinge", [("turn", 35, "left"), ("turn", 35, "right"), ("tilt", 6, "left")])
+def test_gmsh_rotation_matches_numpy(make_config, mode, angle, hinge):
+    cfg = make_config("adjacent_walls", w1=(1.5, mode, angle, hinge), w2=(2.0, mode, angle, hinge))
     gmsh.initialize()
     try:
         for pw in place_windows(cfg):
             corners = pw.closed_sash_corners()
             lo, hi = corners.min(axis=0), corners.max(axis=0)
             plate = gmsh.model.occ.addBox(*lo, *(hi - lo))
-            gmsh.model.occ.rotate([(3, plate)], *pw.start, *pw.hinge_axis, pw.rotation_rad)
+            gmsh.model.occ.rotate([(3, plate)], *pw.hinge_point, *pw.hinge_axis, pw.rotation_rad)
             gmsh.model.occ.synchronize()
             box = np.array(gmsh.model.getBoundingBox(3, plate))
             expected = pw.sash_corners()

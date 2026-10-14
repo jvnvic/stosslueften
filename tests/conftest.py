@@ -19,13 +19,15 @@ def default_dict() -> dict:
 def make_config(default_dict):
     """Build a CaseConfig from the default with a different layout and windows.
 
-    Windows are given as (x_m, mode, angle_deg).
+    Windows are given as (x_m, mode, angle_deg) or (x_m, mode, angle_deg, hinge);
+    the hinge defaults to "left".
     """
 
     def make(layout="opposite_walls", w1=(2.5, "turn", 90), w2=(2.5, "turn", 90)):
         data = dict(default_dict, layout=layout)
-        for name, (x, mode, angle) in (("window1", w1), ("window2", w2)):
-            data[name] = {"x_m": x, "mode": mode, "angle_deg": angle}
+        for name, window in (("window1", w1), ("window2", w2)):
+            x, mode, angle, hinge = (*window, "left") if len(window) == 3 else window
+            data[name] = {"x_m": x, "mode": mode, "angle_deg": angle, "hinge": hinge}
         return config_from_dict(data)
 
     return make
