@@ -44,10 +44,11 @@ of    # loads OpenFOAM v2606 (alias from the AUR package); needed before any Ope
 Working now:
 
 ```bash
-python -m pytest                                              # all tests (~2 s)
+python -m pytest                                              # all tests (~10 s)
 python -m pytest tests/test_windows.py -k collide             # a single test
 python -m geometry.generate --config configs/default.yaml     # geometry + mesh -> cases/default/mesh.msh
-python -m geometry.generate --config configs/default.yaml --no-mesh --gui   # look at the geometry
+python -m geometry.generate --config configs/default.yaml --no-mesh --gui   # Gmsh wireframe view
+python -m geometry.render configs/examples/*.yaml --out docs/images/layouts.png   # README picture
 ```
 
 Not implemented yet (PLAN.md §4):
@@ -65,7 +66,9 @@ python -m sweeps.run_sweep --config configs/sweeps/screening.yaml
 - `configs/default.yaml` is one complete case. Every key is required, and `cfd/config.py` loads and validates it. Invalid values raise `ConfigError` with a clear message.
 - `geometry/windows.py` holds the wall frames, sash positions and the overlap/collision checks. It uses plain numpy, without Gmsh.
 - `geometry/generate.py` builds the Gmsh OpenCASCADE model as a single `fluid` volume. It sorts boundary surfaces into patches (`inlet outlet sides top ground building room_walls sashes`) by their position, sets the mesh size fields, and writes the mesh in MSH 2.2.
+- `geometry/render.py` makes off-screen PyVista renders of that same Gmsh geometry, shown as a cut-away view with the roof removed. Several configs can be shown side by side.
+- `configs/examples/` holds one example case per layout. They are used for the README picture.
 - `tests/`: pytest.
-- `docs/images/` holds the images used in README.md.
+- `docs/images/` holds the images used in README.md. Re-render them when the geometry or the examples change.
 
 The rest of the planned layout is in spec §7.

@@ -2,9 +2,9 @@
 
 This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening windows wide for a few minutes to replace the air in a room. The room has two windows, and the results become a dataset for training a **machine learning surrogate model**. It is a student project for the Master's course *Machine Learning* at Hochschule Hannover.
 
-![Default case geometry in Gmsh](docs/images/geometry_default.png)
+![The three window layouts](docs/images/layouts.png)
 
-*Default case in Gmsh: the room inside its 0.3 m walls, with one window on the south wall and one on the north wall.*
+*The three window layouts, shown with the roof removed. The blue plates are the open sashes, and the arrow shows the wind coming from the south. These are the example cases in `configs/examples/`.*
 
 ## Status
 
@@ -49,19 +49,26 @@ You only need this on the **Linux machine that runs the simulations**. Teammates
 
 ```bash
 python -m geometry.generate --config configs/default.yaml                     # build + mesh -> cases/default/mesh.msh
-python -m geometry.generate --config configs/default.yaml --no-mesh --gui     # look at the geometry
+python -m geometry.render configs/default.yaml --out docs/images/default.png  # picture of the room setup
 python -m pytest                                                              # run all tests
 ```
 
-To try a different case, copy `configs/default.yaml`, change the values (layout, window positions, modes, angles, wind speed) and pass the new file with `--config`. Invalid values stop with a message that says what to fix.
+To try a different case:
+
+1. Copy `configs/default.yaml` or one of the files in `configs/examples/`.
+2. Change the values (layout, window positions, modes, angles, wind speed).
+3. Pass the new file to the commands above.
+
+Invalid values stop with a message that says what to fix. `geometry.render` takes several config files at once and puts their pictures side by side.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
-| `configs/` | Case files (YAML) |
+| `configs/` | Case files (YAML), with one example per layout in `configs/examples/` |
 | `cfd/` | Config loading; later the OpenFOAM case setup and runner |
-| `geometry/` | Window placement and the Gmsh geometry and mesh generator |
+| `geometry/` | Window placement, the Gmsh geometry and mesh generator, and the 3D renders |
+| `docs/images/` | Pictures used in this README |
 | `tests/` | Automated tests |
 | `cases/` | Generated simulation folders (not in git) |
 | `results/` | The dataset (planned) |

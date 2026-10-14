@@ -85,3 +85,14 @@ Template:
   - Added Daniel's Gmsh screenshot of the default geometry as `docs/images/geometry_default.png`.
   - Added a rule to `AGENTS.md` that every AI assistant keeps the README up to date.
 - **Human decisions / review:** Daniel asked for a README that is always kept current, and provided the screenshot.
+
+## 2026-10-14 — 3D renders of the room setup
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Wrote `geometry/render.py`, which renders the same Gmsh geometry the simulation uses off-screen with PyVista. It shows a cut-away view without the roof, with solid walls, blue sashes, the floor, the ground and a wind arrow. Several cases can be placed side by side.
+  - Added one example config per layout in `configs/examples/`.
+  - Adjusted lighting and camera over a few render rounds, checking each picture. The result is a sun from the south-west, a fill light from the east, a soft camera light and soft corner shadows.
+  - Replaced the wireframe screenshot in the README with a three-layout overview (`docs/images/layouts.png`) and added a picture of the default case.
+  - Added PyVista and VTK to `requirements.txt` and added a test.
+- **Human decisions / review:** Daniel asked for more appealing pictures than the Gmsh wireframe screenshot.
