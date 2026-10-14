@@ -138,3 +138,17 @@ Template:
   - Wrote `analysis/visualize.py`, a plan-view picture at window height with air speed (one-hue blue scale) and streamlines, after checking the data-visualization guidelines. Improved the picture over three render rounds and added it to the README.
   - Added tests for the case setup (all pass).
 - **Human decisions / review:** Daniel asked for a test simulation of the default room.
+
+## 2026-10-14 — Tracer solver (air replacement)
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Wrote our own OpenFOAM solver `tracerFoam` (`cfd/solvers/tracerFoam/`). It is a copy of `scalarTransportFoam` that adds turbulent mixing (D = ν/Sc + νt/Sct) and reuses the mass-conserving flow of the steady simulation. It compiled without errors.
+  - Added the tracer stage: templates (`cfd/templates/tracer/`), the setup in `cfd/run_case.py` (copies the mesh and frozen flow, sets C = 1 in the room) and `--tracer-only` to rerun just this stage.
+  - Wrote `analysis/metrics.py`, which computes the dataset values `fresh_frac_030s` … `fresh_frac_600s`, `t90_s` and `tau_s`. The curve is saved as `fresh_fraction.csv`.
+  - Found and fixed a numerical problem. The first scheme choice let the tracer overshoot to −114…+252 near the sashes (Courant number about 100). Bounded first-order upwind keeps it within 0…1 after the first 0.4 s and changes the room result by only 4 %. A looser solver tolerance made the tracer 2.5× faster.
+  - Ran the time-step check from the plan: Δt = 0.1, 0.2 and 0.5 s give t90 within 0.6 % of each other.
+  - Result for the default room: 90 % of the air is replaced after 67 s (τ = 30 s); a perfectly mixed room would take 54 s.
+  - Made two pictures following the data-visualization guidelines: the replacement curve compared with perfect mixing, and top views of the remaining old air after 30, 60 and 120 s. Added them to the README.
+  - Added tests for the metrics and the tracer templates (110 tests pass).
+- **Human decisions / review:** Daniel asked the AI to continue with the tracer solver.

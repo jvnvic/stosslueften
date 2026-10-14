@@ -13,8 +13,9 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | Project plan | ✅ [PLAN.md](PLAN.md) |
 | Geometry and mesh generator | ✅ |
 | OpenFOAM case: steady wind flow | ✅ first test case runs |
-| Tracer (air replacement) and metrics | ⏳ next |
-| Solver benchmark, parameter sweep, dataset | planned |
+| Tracer (air replacement) and metrics | ✅ runs on the frozen steady flow |
+| Solver benchmark: comparison with a fully transient run | ⏳ next |
+| Parameter sweep, dataset | planned |
 
 ## First result
 
@@ -23,6 +24,20 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 This is the default case: windows on opposite walls, both turned open 90°, with a 3 m/s wind from the south. The wind enters through the south window, crosses the room as a jet and leaves through the north window, with two slow vortices on either side of the jet. About **7,700 m³/h** of air flows through the 50 m³ room.
 
 The mesh has 160k cells, and the steady solve took 4.4 min on 8 cores. These are first test values on a coarse mesh and have not been checked for accuracy yet.
+
+### Air replacement
+
+![Share of air replaced over time](docs/images/default_curve.png)
+
+At the start, the room is full of "old" indoor air (a tracer with value 1), and outdoor air is fresh (value 0). The tracer is then carried and mixed by the simulated wind flow.
+
+- **90 % replaced:** after **67 s**.
+- **Time constant:** the curve follows 1 − exp(−t/τ) with **τ = 30 s**.
+- **Compared with perfect mixing:** a perfectly mixed room with the same airflow would reach 90 % after 54 s. The real room is slower because part of the incoming air rushes straight through to the opposite window.
+
+![Where the original indoor air is after 30, 60 and 120 s](docs/images/default_tracer.png)
+
+The pictures show where the old air stays longest: in the slow vortex next to the jet, on the west side of the room.
 
 ## What is simulated
 
@@ -64,12 +79,18 @@ You only need this on the **Linux machine that runs the simulations**. Teammates
 ```bash
 python -m geometry.generate --config configs/default.yaml                     # build + mesh -> cases/default/mesh.msh
 python -m geometry.render configs/default.yaml --out docs/images/default.png  # picture of the room setup
-python -m cfd.run_case --config configs/default.yaml                          # mesh + wind simulation (needs OpenFOAM, ~5 min)
-python -m analysis.visualize --config configs/default.yaml --out flow.png     # picture of the simulated flow
+python -m cfd.run_case --config configs/default.yaml                          # wind + air replacement (needs OpenFOAM, ~6 min)
+python -m cfd.run_case --config configs/default.yaml --tracer-only            # rerun only the air replacement
+python -m analysis.visualize --config configs/default.yaml --kind flow --out flow.png   # also: --kind tracer, --kind curve
 python -m pytest                                                              # run all tests
 ```
 
-`cfd.run_case` writes everything to `cases/<case_id>/`. The key numbers go to `summary.json` there, and each OpenFOAM tool's output goes to a `log.<tool>` file.
+`cfd.run_case` writes everything to `cases/<case_id>/`:
+- `summary.json`: the key numbers.
+- `fresh_fraction.csv`: the air-replacement curve, one value per second.
+- A `log.<tool>` file for each OpenFOAM tool's output.
+
+The first run compiles our own OpenFOAM solver `tracerFoam` (`cfd/solvers/`), which takes about 30 s.
 
 To try a different case:
 
@@ -84,8 +105,8 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 | Path | Contents |
 |---|---|
 | `configs/` | Case files (YAML), with one example per layout in `configs/examples/` |
-| `cfd/` | Config loading, the OpenFOAM case templates and setup, and the case runner |
-| `analysis/` | Pictures (and later metrics) from solved cases |
+| `cfd/` | Config loading, the OpenFOAM case templates and setup, the case runner, and our tracer solver |
+| `analysis/` | Metrics and pictures from solved cases |
 | `geometry/` | Window placement, the Gmsh geometry and mesh generator, and the 3D renders |
 | `docs/images/` | Pictures used in this README |
 | `tests/` | Automated tests |

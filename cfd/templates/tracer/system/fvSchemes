@@ -1,0 +1,39 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSchemes;
+}
+
+ddtSchemes
+{
+    default         Euler;      // first order in time, bounded
+}
+
+gradSchemes
+{
+    default         Gauss linear;
+}
+
+divSchemes
+{
+    default         none;
+    div(phi,C)      bounded Gauss upwind;   // first order, keeps C within 0...1 at any time step;
+                                            // "bounded" removes the tiny mass imbalance left in the frozen flow
+}
+
+laplacianSchemes
+{
+    default         Gauss linear limited corrected 0.33;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         limited corrected 0.33;
+}

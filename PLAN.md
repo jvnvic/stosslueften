@@ -81,7 +81,11 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 
 **First steady run (2026-10-14):** the default case on 160k tetrahedral cells with 8 cores ran 2000 iterations in 4.4 min. The residuals level off around 1e-3 to 1e-4, but the window flow has been stable to ±0.5 % since iteration ~600. Stopping once the monitored values are stable could cut this to about 1.5 min.
 
-**Caveat for A:** `scalarTransportFoam` in v2606 only has a constant diffusivity `DT` (checked in the source), which ignores turbulent mixing. A needs either a small modified copy of that solver with D = DT + νt/Sct (about 20 lines of C++), or another frozen-flow method found in week 1.
+**Option A is implemented (2026-10-14).** Our solver `tracerFoam` (`cfd/solvers/`) is `scalarTransportFoam` with D = ν/Sc + νt/Sct (Sct = 0.7), running on the frozen steady fluxes.
+- **Schemes:** Euler with bounded upwind. Second-order schemes overshoot to C = −114…+252, because the max Courant number is about 100 at the sashes. With upwind, C stays within 0…1 to better than 0.1 % after the first 0.4 s.
+- **Time-step check (default case):** t90 is 66.84 s at Δt = 0.1 s, 66.88 s at 0.2 s and 67.26 s at 0.5 s. The default stays at 0.2 s; 0.5 s is an option for the sweep.
+- **Cost:** about 1–1.5 min for the tracer plus about 4.5 min for the flow (about 1.5 min with an early stop). That is roughly 3–6 min per case, so 150+ runs are clearly affordable.
+- **Still open:** the accuracy comparison with option B (transient) on the same cases.
 
 ## 6. Checks before the big sweep
 

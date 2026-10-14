@@ -1,0 +1,33 @@
+// Values written to postProcessing/ while the tracer solver runs.
+
+// Room average of C: fresh_fraction(t) = 1 - this value.
+roomTracer
+{
+    type            volFieldValue;
+    libs            (fieldFunctionObjects);
+    regionType      cellZone;
+    name            room;
+    operation       volAverage;
+    fields          (C);
+    writeFields     false;
+    writeControl    timeStep;
+    writeInterval   1;
+}
+
+// Highest C in the room: shows pockets of old air that are not flushed out.
+roomTracerMax
+{
+    $roomTracer;
+    operation       max;
+}
+
+// Smallest and largest C anywhere: must stay within 0...1.
+tracerRange
+{
+    type            fieldMinMax;
+    libs            (fieldFunctionObjects);
+    fields          (C);
+    location        false;
+    writeControl    timeStep;
+    writeInterval   1;
+}

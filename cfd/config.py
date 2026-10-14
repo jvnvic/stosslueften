@@ -77,6 +77,8 @@ class Flow:
     roughness_length_m: float  # ground roughness z0 of the wind profile
     max_iterations: int  # the steady solver stops here at the latest
     n_procs: int  # CPU cores used for one case
+    tracer_duration_s: float  # simulated time of the air replacement
+    tracer_time_step_s: float
 
 
 @dataclass(frozen=True)
@@ -184,4 +186,9 @@ def _check_values(cfg: CaseConfig) -> None:
     require(
         mesh.window_m <= mesh.room_m <= mesh.building_m <= mesh.far_m,
         "mesh sizes must grow: window_m <= room_m <= building_m <= far_m",
+    )
+    flow = cfg.flow
+    require(
+        flow.tracer_time_step_s <= flow.tracer_duration_s / 100,
+        "flow.tracer_time_step_s must be at most 1/100 of flow.tracer_duration_s",
     )

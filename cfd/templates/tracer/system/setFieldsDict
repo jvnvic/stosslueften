@@ -1,0 +1,25 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      setFieldsDict;
+}
+
+// At t = 0 the room is full of original indoor air (C = 1), everything else is fresh (C = 0).
+defaultFieldValues
+(
+    volScalarFieldValue C 0
+);
+
+regions
+(
+    zoneToCell
+    {
+        zone        room;
+        fieldValues
+        (
+            volScalarFieldValue C 1
+        );
+    }
+);

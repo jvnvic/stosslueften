@@ -50,11 +50,12 @@ python -m pytest tests/test_windows.py -k collide             # a single test
 python -m geometry.generate --config configs/default.yaml     # geometry + mesh -> cases/default/mesh.msh
 python -m geometry.generate --config configs/default.yaml --no-mesh --gui   # Gmsh wireframe view
 python -m geometry.render configs/examples/*.yaml --out docs/images/layouts.png   # README picture
-python -m cfd.run_case --config configs/default.yaml          # mesh + steady wind flow -> cases/default/ (needs OpenFOAM)
-python -m analysis.visualize --config configs/default.yaml --out docs/images/default_flow.png   # flow picture
+python -m cfd.run_case --config configs/default.yaml          # mesh + steady flow + tracer -> cases/default/ (needs OpenFOAM)
+python -m cfd.run_case --config configs/default.yaml --tracer-only   # rerun the tracer on the existing flow
+python -m analysis.visualize --config configs/default.yaml --kind flow|tracer|curve --out <png>
 ```
 
-Not implemented yet (PLAN.md §4): tracer transport and metrics, and `python -m sweeps.run_sweep`.
+Not implemented yet (PLAN.md §4): the transient comparison run (benchmark option B) and `python -m sweeps.run_sweep`.
 
 - Gmsh meshes must be written in MSH 2.2 format (`Mesh.MshFileVersion = 2.2`) for `gmshToFoam`.
 - In ParaView, use its built-in OpenFOAM reader. The AUR package's reader plugin does not build.
@@ -66,10 +67,14 @@ Not implemented yet (PLAN.md §4): tracer transport and metrics, and `python -m 
 - `geometry/generate.py` builds the Gmsh OpenCASCADE model as a single `fluid` volume. It sorts boundary surfaces into patches (`inlet outlet sides top ground building room_walls sashes`) by their position, sets the mesh size fields, and writes the mesh in MSH 2.2.
 - `geometry/render.py` makes off-screen PyVista renders of that same Gmsh geometry, shown as a cut-away view with the roof removed. Several configs can be shown side by side.
 - `configs/examples/` holds one example case per layout. They are used for the README picture.
-- `cfd/templates/` holds the OpenFOAM case files with `@PLACEHOLDERS@`. `cfd/case_setup.py` fills them in, adds window-flow monitors and sets patch types.
+- `cfd/templates/flow/` and `cfd/templates/tracer/` hold the OpenFOAM case files of the two stages, with `@PLACEHOLDERS@`. `cfd/case_setup.py` fills them in, adds window-flow monitors and sets patch types.
+- `cfd/solvers/tracerFoam/` is our solver: `scalarTransportFoam` plus turbulent diffusivity `D = nu/Sc + nut/Sct` on the frozen steady `phi`. It is compiled by `wmake` into `$FOAM_USER_APPBIN`, and `run_case` does this automatically.
+  - Schemes: Euler with `bounded Gauss upwind`. Second-order schemes overshoot badly because the max Courant number is about 100 at the sashes.
+  - The tracer case lives in `cases/<id>/tracer/`, with the mesh copied and `phi`/`nut` copied from the steady result.
+- `analysis/metrics.py` computes `fresh_frac_XXXs`, `t90_s` and `tau_s` (PLAN.md §3) from the room-average tracer.
 - The boundary conditions follow the OpenFOAM v2606 validation case `atmDownstreamDevelopment`: a log-law wind profile at the inlet, k-ω SST turbulence, rough ground via `atmNutkWallFunction`, and a fixed shear stress at the top.
 - `cfd/run_case.py` runs the chain: Gmsh mesh, `gmshToFoam`, patch types, `topoSet` (cellZone `room`), `renumberMesh`, `checkMesh`, then `simpleFoam` in parallel. It writes `summary.json`.
-- `analysis/visualize.py` reads a solved case with PyVista and renders a plan view at window height with air speed and streamlines.
+- `analysis/visualize.py` reads a solved case with PyVista. It renders top views at window height (air speed with streamlines, or the tracer) and plots the replacement curve with matplotlib.
 - `tests/`: pytest.
 - `docs/images/` holds the images used in README.md. Re-render them when the geometry or the examples change.
 

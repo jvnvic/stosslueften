@@ -1,0 +1,34 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+
+// nut from the steady solution uses wall-function boundary types; loading these
+// libraries lets tracerFoam read it.
+libs            (turbulenceModels incompressibleTurbulenceModels atmosphericModels);
+
+application     tracerFoam;     // our solver, cfd/solvers/tracerFoam
+
+startFrom       startTime;
+startTime       0;
+stopAt          endTime;
+endTime         @TRACER_DURATION@;      // simulated time [s]
+deltaT          @TRACER_TIME_STEP@;     // [s]
+
+writeControl    runTime;
+writeInterval   30;                     // tracer snapshots every 30 s (for pictures)
+purgeWrite      0;
+writeFormat     binary;
+writePrecision  8;
+writeCompression off;
+timeFormat      general;
+timePrecision   6;
+runTimeModifiable true;
+
+functions
+{
+    #include "monitors"
+}

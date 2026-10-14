@@ -1,7 +1,11 @@
 """Write the OpenFOAM case files (0/, constant/, system/) for one case.
 
-The files are copied from cfd/templates/ with the @PLACEHOLDERS@ filled in from
-the case config. The mesh itself comes from geometry/generate.py (see run_case.py).
+Each case has two stages, each with its own templates in cfd/templates/<stage>/:
+- "flow":   steady wind flow with simpleFoam, in cases/<case_id>/
+- "tracer": air replacement with tracerFoam on the frozen flow, in cases/<case_id>/tracer/
+
+The @PLACEHOLDERS@ in the templates are filled in from the case config. The mesh
+itself comes from geometry/generate.py (see run_case.py).
 """
 
 from __future__ import annotations
@@ -88,15 +92,18 @@ def placeholders(cfg: CaseConfig) -> dict[str, str]:
         "OMEGA_INIT": f"{profile['omega']:.6g}",
         "MAX_ITERATIONS": str(cfg.flow.max_iterations),
         "N_PROCS": str(cfg.flow.n_procs),
+        "TRACER_DURATION": f"{cfg.flow.tracer_duration_s:g}",
+        "TRACER_TIME_STEP": f"{cfg.flow.tracer_time_step_s:g}",
         "ROOM_MAX": f"{room.width_m:g} {room.depth_m:g} {room.height_m:g}",
         "WINDOW_MONITORS": "\n".join(window_monitor(pw) for pw in place_windows(cfg)),
     }
 
 
-def write_case_files(cfg: CaseConfig, case_dir: Path) -> None:
-    """Copy every template into case_dir with the placeholders filled in."""
+def write_case_files(cfg: CaseConfig, case_dir: Path, stage: str) -> None:
+    """Copy every template of `stage` ("flow" or "tracer") into case_dir with the placeholders filled in."""
     values = placeholders(cfg)
-    for template in sorted(TEMPLATES.rglob("*")):
+    stage_dir = TEMPLATES / stage
+    for template in sorted(stage_dir.rglob("*")):
         if not template.is_file():
             continue
         text = template.read_text(encoding="utf-8")
@@ -104,7 +111,7 @@ def write_case_files(cfg: CaseConfig, case_dir: Path) -> None:
             text = text.replace(f"@{key}@", value)
         if leftover := sorted(set(re.findall(r"@[A-Z_]+@", text))):
             raise RuntimeError(f"{template}: placeholder(s) without a value: {leftover}")
-        target = case_dir / template.relative_to(TEMPLATES)
+        target = case_dir / template.relative_to(stage_dir)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding="utf-8")
 

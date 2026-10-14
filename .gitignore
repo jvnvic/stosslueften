@@ -12,3 +12,6 @@ cases/
 .DS_Store
 Thumbs.db
 .idea/
+
+# OpenFOAM build output of our own solvers
+cfd/solvers/*/Make/linux64*/
