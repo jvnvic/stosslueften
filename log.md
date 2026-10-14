@@ -55,3 +55,13 @@ Template:
   - OpenFOAM is installed natively instead of in Docker.
   - The ML models will follow the course requirements. The deliverables are not defined yet.
   - Focus on data generation first; the ML part will be planned later.
+
+## 2026-10-14 — Python environment
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Created the Python virtual environment (Python 3.14) with `gmsh`, `numpy`, `pandas`, `scipy` and `pyyaml`, and pinned their versions in `requirements.txt`.
+  - Ran a Gmsh smoke test: meshed a room box with a window opening and exported it in the MSH 2.2 format that OpenFOAM's `gmshToFoam` reads.
+  - Read the AUR package's install notes. OpenFOAM is loaded with `of`, and ParaView has to use its built-in OpenFOAM reader.
+  - Added the setup commands to `AGENTS.md`.
+- **Human decisions / review:** Daniel started the OpenFOAM v2606 build (AUR `openfoam-com`) himself and asked the AI to commit, push and set up the Python environment.

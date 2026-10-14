@@ -27,12 +27,28 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 
 ## Commands
 
-None yet. This is the target interface from PLAN.md §4:
+One-time setup on the Linux CFD machine:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+```
+
+Each shell session:
+
+```bash
+source .venv/bin/activate
+of    # loads OpenFOAM v2606 (alias from the AUR package); needed before any OpenFOAM command
+```
+
+Pipeline. This is the target interface from PLAN.md §4 and is not implemented yet:
 
 ```bash
 python -m cfd.run_case --config configs/default.yaml
 python -m sweeps.run_sweep --config configs/sweeps/screening.yaml
 ```
+
+- Gmsh meshes must be written in MSH 2.2 format (`Mesh.MshFileVersion = 2.2`) for `gmshToFoam`.
+- In ParaView, use its built-in OpenFOAM reader. The AUR package's reader plugin does not build.
 
 ## Structure
 

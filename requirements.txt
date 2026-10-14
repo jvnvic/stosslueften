@@ -1,0 +1,6 @@
+# Python environment for the CFD pipeline (Linux, tested with Python 3.14)
+gmsh==4.15.2
+numpy==2.5.4
+pandas==3.0.6
+PyYAML==6.0.3
+scipy==1.18.1
