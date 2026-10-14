@@ -53,6 +53,8 @@ python -m geometry.render configs/examples/*.yaml --out docs/images/layouts.png 
 python -m cfd.run_case --config configs/default.yaml          # mesh + steady flow + tracer -> cases/default/ (needs OpenFOAM)
 python -m cfd.run_case --config configs/default.yaml --tracer-only   # rerun the tracer on the existing flow
 python -m analysis.visualize --config configs/default.yaml --kind flow|tracer|curve --out <png>
+python -m cfd.run_case --config configs/benchmark/same_wall.yaml --transient --procs 4   # option B comparison run (hours)
+python -m analysis.monitor                                    # live progress window (--once <png> for a snapshot)
 ```
 
 Not implemented yet (PLAN.md §4): the transient comparison run (benchmark option B) and `python -m sweeps.run_sweep`.
@@ -74,6 +76,8 @@ Not implemented yet (PLAN.md §4): the transient comparison run (benchmark optio
 - `analysis/metrics.py` computes `fresh_frac_XXXs`, `t90_s` and `tau_s` (PLAN.md §3) from the room-average tracer.
 - The boundary conditions follow the OpenFOAM v2606 validation case `atmDownstreamDevelopment`: a log-law wind profile at the inlet, k-ω SST turbulence, rough ground via `atmNutkWallFunction`, and a fixed shear stress at the top.
 - `cfd/run_case.py` runs the chain: Gmsh mesh, `gmshToFoam`, patch types, `topoSet` (cellZone `room`), `renumberMesh`, `checkMesh`, then `simpleFoam` in parallel. It writes `summary.json`.
+- `analysis/monitor.py` is a live matplotlib/Tk window. It finds running solvers via psutil (process name and working directory), then reads `log.<solver>` and `postProcessing/` and shows progress, an estimated finish time, convergence plots and per-core load and affinity.
+- `cfd/templates/transient/` is the option-B comparison stage: pimpleFoam starting from the steady solution, with a spin-up and then the tracer via the `scalarTransport` function object. The runner uses `mpirun --bind-to none` so that two cases can share the CPU.
 - `analysis/visualize.py` reads a solved case with PyVista. It renders top views at window height (air speed with streamlines, or the tracer) and plots the replacement curve with matplotlib.
 - `tests/`: pytest.
 - `docs/images/` holds the images used in README.md. Re-render them when the geometry or the examples change.

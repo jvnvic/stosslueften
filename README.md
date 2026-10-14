@@ -82,8 +82,16 @@ python -m geometry.render configs/default.yaml --out docs/images/default.png  # 
 python -m cfd.run_case --config configs/default.yaml                          # wind + air replacement (needs OpenFOAM, ~6 min)
 python -m cfd.run_case --config configs/default.yaml --tracer-only            # rerun only the air replacement
 python -m analysis.visualize --config configs/default.yaml --kind flow --out flow.png   # also: --kind tracer, --kind curve
+python -m analysis.monitor                                                    # live window: progress, CPU cores, convergence
 python -m pytest                                                              # run all tests
 ```
+
+`analysis.monitor` opens a small window that updates every 5 s while simulations run. It shows:
+- the progress and estimated finish time of each running case;
+- plots that show whether the values level off (residuals, window flow, air replaced);
+- the load of each CPU core and which case runs on which core.
+
+Start it in a second terminal. Closing it does not affect the simulations.
 
 `cfd.run_case` writes everything to `cases/<case_id>/`:
 - `summary.json`: the key numbers.

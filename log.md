@@ -152,3 +152,16 @@ Template:
   - Made two pictures following the data-visualization guidelines: the replacement curve compared with perfect mixing, and top views of the remaining old air after 30, 60 and 120 s. Added them to the README.
   - Added tests for the metrics and the tracer templates (110 tests pass).
 - **Human decisions / review:** Daniel asked the AI to continue with the tracer solver.
+
+## 2026-10-14 — Solver benchmark setup and live monitor
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Recommended a "risk first" order: a quick plausibility check of the steady method on a `same_wall` case, then the transient comparison (option B), then speed optimizations.
+  - **same_wall check (steady method):** 90 % of the air is replaced after 313 s (τ = 143 s). Compared with empirical single-sided ventilation formulas (de Gids & Phaff 1982, Warren & Parkins 1985: τ ≈ 210–250 s for single-sided exchange alone) plus the simulated through-flow between the two windows, this is plausible. No red flag.
+  - **Transient comparison stage:** built the transient stage (`--transient`). It runs pimpleFoam starting from the steady flow, with a 60 s spin-up, and transports the tracer with OpenFOAM's `scalarTransport` function object using the same diffusivity as `tracerFoam`. Started it for the default and `same_wall` cases (about 4.5 h and 2 h).
+  - **CPU fix:** found that two parallel runs were pinned to the same 4 CPU cores (each process got only 50 %). Fixed with `mpirun --bind-to none` and restarted.
+  - **Cut the automatic early stop:** OpenFOAM's built-in criterion only supports an absolute tolerance, and the window flows differ by a factor of 10 between cases. The AI proposed checking the effect of the iteration count directly instead. Prepared mesh-sensitivity (×1.4 / ×0.7 cell size) and iteration-count (500/1000/1500) checks, queued to run automatically.
+  - **Live monitor:** wrote `analysis/monitor.py`, a small window that shows running simulations (progress, finish time, time step, Courant number), convergence plots and per-core CPU load with process placement. It revealed that the transient flows were still drifting after the planned 60 s spin-up, which will be checked before trusting the comparison.
+  - **Curve plot fixes:** clearer label for the "perfectly mixed" reference, which only counts the through-flow, and an x-axis that grows when 90 % is reached late.
+- **Human decisions / review:** Daniel decided that more simulation time is acceptable if it makes the results more trustworthy, and asked for an explanation of the long transient run and for a live monitor window.
