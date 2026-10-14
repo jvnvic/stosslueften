@@ -78,6 +78,7 @@ Not implemented yet (PLAN.md §4): the transient comparison run (benchmark optio
 - `geometry/generate.py` builds the Gmsh OpenCASCADE model as a single `fluid` volume. It sorts boundary surfaces into patches (`inlet outlet sides top ground building room_walls sashes`) by their position, sets the mesh size fields, and writes the mesh in MSH 2.2.
 - `geometry/render.py` makes off-screen PyVista renders of that same Gmsh geometry, shown as a cut-away view with the roof removed. Several configs can be shown side by side.
 - `configs/examples/` holds one example case per layout. They are used for the README picture.
+- `configs/benchmark/` holds the mesh study and solver benchmark cases (PLAN.md §5–6). `configs/comparison/` holds the method A vs B comparison cases for decision M1 (one per layout and window-mode combination, plus wind speed and mesh checks).
 - `cfd/templates/flow/` and `cfd/templates/tracer/` hold the OpenFOAM case files of the two stages, with `@PLACEHOLDERS@`. `cfd/case_setup.py` fills them in, adds window-flow monitors and sets patch types.
 - `cfd/solvers/tracerFoam/` is our solver: `scalarTransportFoam` plus turbulent diffusivity `D = nu/Sc + nut/Sct` on the frozen steady `phi`. It is compiled by `wmake` into `$FOAM_USER_APPBIN`, and `run_case` does this automatically.
   - Schemes: Euler with `bounded Gauss upwind`. Second-order schemes overshoot badly because the max Courant number is about 100 at the sashes.

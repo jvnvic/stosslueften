@@ -299,3 +299,16 @@ Template:
   - Wrote the results into PLAN.md §5, set decision M1 to "under review" with three options, and made it the next step in §9. Updated the README benchmark section and its two plots, and the status line in `AGENTS.md`.
   - Problem found: the script's live shortening of the default run's end time (to 360 s) was ignored. OpenFOAM only re-reads a file whose timestamp is more than 5 s newer than its last read (`fileModificationSkew`), and the edit came 3 s after the start. The run went past 360 s until Daniel noticed. It was then set to 390 s and stopped there.
 - **Human decisions / review:** Daniel noticed the run going over time. The decision on M1 (method A, B, or more comparisons first) is left to the team.
+
+## 2026-10-14 — Overnight comparison runs for decision M1
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Planned an overnight batch (about 8–10 h) to give the team more data for the choice between method A and B. All runs go through `cfd.queue`. The configs are in `configs/comparison/`.
+    - Three runs with method A only: the same-wall case with window 1 shifted by ±1 cm and with all cell sizes ×0.97. They test whether the steady state with almost no through-flow is robust.
+    - Ten A-vs-B comparisons in two queues side by side (4 cores each), most informative first:
+      - every layout combined with turn/tilt, tilt/tilt and turn/turn windows;
+      - wind at 1 m/s (opposite walls) and 5 m/s (same wall);
+      - the same-wall case on the coarse mesh, as a mesh check for method B.
+  - Extended `cfd.queue --transient` so that it first runs the steady flow for cases that don't have one yet. Two queues started in the same second now get different status files.
+- **Human decisions / review:** Daniel asked for a long overnight plan that gives as much data as possible for the decision.

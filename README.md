@@ -148,7 +148,7 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 
 | Path | Contents |
 |---|---|
-| `configs/` | Case files (YAML), with one example per layout in `configs/examples/` |
+| `configs/` | Case files (YAML): one example per layout in `configs/examples/`, the mesh and solver checks in `configs/benchmark/` and `configs/comparison/` |
 | `cfd/` | Config loading, the OpenFOAM case templates and setup, the case runner, and our tracer solver |
 | `analysis/` | Metrics and pictures from solved cases |
 | `geometry/` | Window placement, the Gmsh geometry and mesh generator, and the 3D renders |
