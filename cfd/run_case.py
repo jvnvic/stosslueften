@@ -172,7 +172,8 @@ def transient_summary(cfg: CaseConfig, case_dir: Path, transient_dir: Path) -> d
     _save_curve(case_dir / "fresh_fraction_transient.csv", t, fresh, cfg.flow.tracer_duration_s)
     c_min, c_max = tracer_bounds(transient_dir)
     log = (transient_dir / "log.pimpleFoam").read_text(errors="replace")
-    n_steps = len(re.findall(r"^Time = ", log, re.M))
+    times = re.findall(r"^Time = ([\d.e+-]+)", log, re.M)
+    n_steps, end_time = len(times), float(times[-1])  # the end time may be shortened during a run
     summary = {k: round(v, 4) for k, v in tracer_metrics(t, fresh, cfg.flow.tracer_duration_s).items()}
     for window in ("window1", "window2"):
         flow = read_dat(transient_dir / "postProcessing" / f"{window}Flow" / "0" / "surfaceFieldValue.dat")
@@ -183,8 +184,9 @@ def transient_summary(cfg: CaseConfig, case_dir: Path, transient_dir: Path) -> d
         **summary,
         "tracer_min": float(f"{c_min:.3g}"),
         "tracer_max": float(f"{c_max:.6g}"),
+        "tracer_simulated_s": round(end_time - spinup, 1),  # curve values after this repeat the last value
         "time_steps": n_steps,
-        "mean_time_step_s": round((spinup + cfg.flow.tracer_duration_s) / max(n_steps, 1), 4),
+        "mean_time_step_s": round(end_time / max(n_steps, 1), 4),
     }
 
 
