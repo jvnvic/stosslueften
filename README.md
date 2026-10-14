@@ -14,7 +14,8 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | Geometry and mesh generator | ✅ |
 | OpenFOAM case: steady wind flow | ✅ first test case runs |
 | Tracer (air replacement) and metrics | ✅ runs on the frozen steady flow |
-| Solver benchmark: comparison with a fully transient run | ⏳ next |
+| Solver benchmark: comparison with a fully transient run | ✅ steady method chosen (see below) |
+| Mesh and iteration checks | ⏳ running |
 | Parameter sweep, dataset | planned |
 
 ## First result
@@ -38,6 +39,21 @@ At the start, the room is full of "old" indoor air (a tracer with value 1), and 
 ![Where the original indoor air is after 30, 60 and 120 s](docs/images/default_tracer.png)
 
 The pictures show where the old air stays longest: in the slow vortex next to the jet, on the west side of the room.
+
+### Solver benchmark: is the fast method good enough?
+
+The dataset uses a fast method:
+- **(A)** compute the steady (averaged) wind flow once, then move the tracer through it.
+
+We compared it with a much more expensive one:
+- **(B)** compute the time-varying flow with the tracer (URANS), about 25–30× slower.
+
+We ran both on two cases: windows on opposite walls, and both windows on the same wall. The second is the hardest case for method A.
+
+![Benchmark, opposite walls](docs/images/benchmark_default.png)
+![Benchmark, same wall](docs/images/benchmark_same_wall.png)
+
+The two methods agree within 6 % (opposite walls) and 12 % (same wall). Method A replaces the air slightly faster. We use method A for the dataset and report this difference as a known uncertainty. Details are in [PLAN.md §5](PLAN.md).
 
 ## What is simulated
 

@@ -189,3 +189,16 @@ Template:
   - Added a rule to `AGENTS.md`: start long runs detached (`setsid nohup`).
 - **Human decisions / review:** Daniel approved the indexer changes and will improve the laptop's cooling.
 - **To undo later:** `balooctl6 enable` turns indexing back on; the `cases/` exclusion stays. Optionally, `balooctl6 purge` rebuilds the bloated index.
+
+## 2026-10-14 — Solver benchmark result (milestone M1)
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Evaluated the transient comparison runs (option B) against the steady method (option A) for two cases.
+  - **Default room:** t90 is 70.9 s (B) vs 66.9 s (A), +6 %.
+  - **same_wall:** t90 is 352 s (B) vs 313 s (A), +12 %.
+  - Checked the spin-up: the time-varying flow had leveled off after 30 s (default) and about 180 s (same wall), with nearly the same mean during the tracer phase. It fluctuates by less than 2 %.
+  - Made comparison plots (both methods, plus the perfect-mixing reference, with both t90 values labeled). Documented the result table, caveats and the decision in PLAN.md §5 and the README.
+  - Found that the queued mesh and iteration checks had never started. The queue's process-name wait matched leftover helper shells from the AI's own launch command. Restarted the checks directly and detached.
+  - Recommended **option A** for the sweep. It is 25–30× cheaper, and its 6–12 % optimistic offset is documented as a known uncertainty. This follows the plan's decision rule (B costs far more than 30 min per case).
+- **Human decisions / review:** Daniel had approved more simulation time for trustworthiness. The decision M1 is recorded as the AI's recommendation per the plan's rule; the team can override it.

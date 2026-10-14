@@ -85,7 +85,24 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 - **Schemes:** Euler with bounded upwind. Second-order schemes overshoot to C = −114…+252, because the max Courant number is about 100 at the sashes. With upwind, C stays within 0…1 to better than 0.1 % after the first 0.4 s.
 - **Time-step check (default case):** t90 is 66.84 s at Δt = 0.1 s, 66.88 s at 0.2 s and 67.26 s at 0.5 s. The default stays at 0.2 s; 0.5 s is an option for the sweep.
 - **Cost:** about 1–1.5 min for the tracer plus about 4.5 min for the flow (about 1.5 min with an early stop). That is roughly 3–6 min per case, so 150+ runs are clearly affordable.
-- **Still open:** the accuracy comparison with option B (transient) on the same cases.
+**Benchmark result (2026-10-14).** Option B: pimpleFoam (URANS, k-ω SST) on the same mesh, starting from the steady flow, max Courant number 10 (Δt ≈ 0.017–0.044 s), 60 s spin-up, then the tracer via `scalarTransport` with the same diffusivity.
+
+| Case | Method | t90 | τ | Air replaced after 60 s | Window flow | Compute |
+|---|---|---|---|---|---|---|
+| opposite walls (default) | A | 66.9 s | 29.9 s | 87.1 % | 7,736 m³/h | ~6 min |
+| | B | 70.9 s (+6 %) | 31.8 s (+6 %) | 85.5 % | 7,894 ± 25 m³/h | ~2.6 h* |
+| same wall | A | 313 s | 143 s | 30.9 % | 785 m³/h | ~5 min |
+| | B | 352 s (+12 %) | 160 s (+12 %) | 28.8 % | 727 ± 13 m³/h | ~2.2 h |
+
+\*Tracer simulated for 300 s only. The run was shortened, since 99 % of the air was replaced after 120 s.
+
+- **The time-varying flow is nearly steady.** The window flow fluctuates by less than 2 %.
+- **Spin-up was enough.** The flow had leveled off after 30 s (default) and about 180 s (same wall), with nearly the same mean during the tracer phase.
+- **B is slightly slower than A**, by 6 % (default) and 12 % (same wall). So A is slightly optimistic, not too pessimistic as feared for single-sided cases.
+- **Empirical cross-check for same wall:** single-sided formulas (de Gids & Phaff 1982; Warren & Parkins 1985) give τ ≈ 210–250 s for single-sided exchange alone, plus the through-flow between the windows. Both methods are plausible.
+- **Caveat:** URANS cannot capture turbulent "pumping" at openings either (that needs LES). The comparison tests unsteady mean-flow effects, not small-scale turbulence.
+
+**Decision M1: option A (steady flow + frozen tracer) for the sweep.** It is 25–30× cheaper, and the difference to B (6–12 %) is reported as a known systematic uncertainty of the dataset.
 
 ## 6. Checks before the big sweep
 
@@ -99,7 +116,7 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 
 | Week | Dates | Work | Milestone |
 |---|---|---|---|
-| 1 | Oct 14–20 | Install the tools:<br>• OpenFOAM v2606 via AUR `openfoam-com` (compiles from source, about 1–2 h)<br>• ParaView<br>• Python venv with `gmsh`, `numpy`, `pandas`, `scipy`, `pyyaml`<br>Then:<br>• Run one official tutorial.<br>• Mesh one layout with turned windows and solve the steady flow.<br>• Run the benchmark (§5). | **M1:** solver approach decided |
+| 1 ✅ | Oct 14–20 | Install the tools:<br>• OpenFOAM v2606 via AUR `openfoam-com` (compiles from source, about 1–2 h)<br>• ParaView<br>• Python venv with `gmsh`, `numpy`, `pandas`, `scipy`, `pyyaml`<br>Then:<br>• Run one official tutorial.<br>• Mesh one layout with turned windows and solve the steady flow.<br>• Run the benchmark (§5). | **M1:** solver approach decided |
 | 2 | Oct 21–27 | Tracer and metrics; all layouts, turn/tilt and the validator; `run_case` as one command; the checks in §6 | **M2:** a valid CSV row for every layout and mode; columns frozen |
 | 3 | Oct 28–Nov 3 | Sampler and sweep runner; a 15-run pilot; start the full sweep (train + test) | **M3:** sweep running |
 | 4 | Nov 4–10 | Sweep runs, failed cases fixed and rerun; ParaView streamline and tracer visualizations for 2–3 cases | **M4:** dataset complete |

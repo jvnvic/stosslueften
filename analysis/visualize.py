@@ -175,7 +175,12 @@ def plot_curve(cfg: CaseConfig, case_dir: Path, out: Path) -> None:
     if np.isfinite(t90):
         ax.axvline(t90, color=MUTED, linewidth=0.8, linestyle=":")
         on_right = t90 < 0.6 * x_max  # put the label where there is room
-        ax.annotate(f"90 % replaced after {t90:.0f} s", xy=(t90, 90), xytext=(t90 + (12 if on_right else -12), 70 if on_right else 45),
+        label = f"90 % replaced after {t90:.0f} s"
+        if transient_file.exists() and np.isfinite(summary.get("transient", {}).get("t90_s", np.nan)):
+            t90_b = summary["transient"]["t90_s"]
+            ax.axvline(t90_b, color=SERIES_2, linewidth=0.8, linestyle=":")
+            label = f"90 % replaced after\n{t90:.0f} s (A) / {t90_b:.0f} s (B)"
+        ax.annotate(label, xy=(t90, 90), xytext=(t90 + (12 if on_right else -12), 70 if on_right else 45),
                     ha="left" if on_right else "right", color=INK, fontsize=9,
                     arrowprops=dict(arrowstyle="-", color=MUTED, linewidth=0.8))
     ax.set_ylim(0, 100)
