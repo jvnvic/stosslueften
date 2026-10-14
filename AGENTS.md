@@ -9,7 +9,7 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 - **Current phase: data generation** (the CFD pipeline). The ML part will be planned later.
 - [PLAN.md](PLAN.md) holds the agreed decisions, dataset columns and schedule. **Read it first.**
 - [VENTILATION_CFD_PROJECT.md](VENTILATION_CFD_PROJECT.md) is the original background spec. PLAN.md wins wherever they differ.
-- Status: no code yet. Deadline: less than 6 weeks from 2026-10-14.
+- Status: the geometry and mesh generator works. The CFD case setup is next. Deadline: less than 6 weeks from 2026-10-14.
 
 ## Environment
 
@@ -40,7 +40,16 @@ source .venv/bin/activate
 of    # loads OpenFOAM v2606 (alias from the AUR package); needed before any OpenFOAM command
 ```
 
-Pipeline. This is the target interface from PLAN.md §4 and is not implemented yet:
+Working now:
+
+```bash
+python -m pytest                                              # all tests (~2 s)
+python -m pytest tests/test_windows.py -k collide             # a single test
+python -m geometry.generate --config configs/default.yaml     # geometry + mesh -> cases/default/mesh.msh
+python -m geometry.generate --config configs/default.yaml --no-mesh --gui   # look at the geometry
+```
+
+Not implemented yet (PLAN.md §4):
 
 ```bash
 python -m cfd.run_case --config configs/default.yaml
@@ -52,4 +61,9 @@ python -m sweeps.run_sweep --config configs/sweeps/screening.yaml
 
 ## Structure
 
-Planned layout: spec §7.
+- `configs/default.yaml` is one complete case. Every key is required, and `cfd/config.py` loads and validates it. Invalid values raise `ConfigError` with a clear message.
+- `geometry/windows.py` holds the wall frames, sash positions and the overlap/collision checks. It uses plain numpy, without Gmsh.
+- `geometry/generate.py` builds the Gmsh OpenCASCADE model as a single `fluid` volume. It sorts boundary surfaces into patches (`inlet outlet sides top ground building room_walls sashes`) by their position, sets the mesh size fields, and writes the mesh in MSH 2.2.
+- `tests/`: pytest.
+
+The rest of the planned layout is in spec §7.

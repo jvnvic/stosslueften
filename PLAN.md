@@ -10,7 +10,7 @@ Agreed 2026-10-14. Deadline: less than 6 weeks away; the exact date is still to 
 |---|---|
 | Room (inside) | 5.0 m (x) × 4.0 m (y) × 2.5 m (z). Walls and roof are 0.3 m thick, the floor sits on the ground, and the building is 2.8 m tall. |
 | Axes | Origin at the inner south-west floor corner. x points east, y north, z up. |
-| Windows | Single Dreh-Kipp sash, 1.0 m wide × 1.25 m high, sill at 0.9 m. The sash is a 0.06 m solid plate that opens inward. |
+| Windows | Single Dreh-Kipp sash, 1.0 m wide × 1.25 m high, sill at 0.9 m. The sash is a 0.06 m solid plate that opens inward and turns about a solid hinge post (r = 4 cm). The post prevents mesh-breaking thin wedges at the hinge. |
 | Turn mode | Hinge on the window's west side (S/N walls) or south side (E/W walls). |
 | Tilt mode | Hinge at the bottom, fixed at 6°, which gives a ~13 cm gap at the top. |
 | Window position | `x_m` is the distance from the wall's west end (S/N walls) or south end (E/W walls) to the window centre. |

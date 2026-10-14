@@ -65,3 +65,14 @@ Template:
   - Read the AUR package's install notes. OpenFOAM is loaded with `of`, and ParaView has to use its built-in OpenFOAM reader.
   - Added the setup commands to `AGENTS.md`.
 - **Human decisions / review:** Daniel started the OpenFOAM v2606 build (AUR `openfoam-com`) and asked the AI to commit, push and set up the Python environment.
+
+## 2026-10-14 — Geometry and mesh generator
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Wrote the case config format (`configs/default.yaml`) and a loader that checks it (`cfd/config.py`). Unknown keys, missing keys and invalid values stop with a clear error.
+  - Wrote the window placement logic (`geometry/windows.py`): wall coordinate frames, turn/tilt sash rotation, and checks that windows fit on their wall, don't overlap, and that open sashes don't collide.
+  - Wrote the Gmsh model and mesh generator (`geometry/generate.py`). It builds the room, 0.3 m walls, window openings, sashes and outdoor domain, names the boundary patches, sets refinement zones and writes a mesh `gmshToFoam` can read.
+  - Made one modeling choice: each sash turns about a solid 4 cm hinge post. Without it, the sash and wall form razor-thin wedges near the hinge that can't be meshed.
+  - Added 56 automated tests. Meshed all 21 distinct layout, mode and angle combinations: each takes about 1 s and gives about 155–160k cells, with no poor-quality cells.
+- **Human decisions / review:** Daniel asked the AI to start the geometry generator while OpenFOAM compiles.
