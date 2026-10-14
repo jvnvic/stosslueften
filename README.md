@@ -107,7 +107,7 @@ python -m pytest                                                              # 
 - the load of every CPU core and which case runs on it;
 - the run queues: counts, progress, average time per case, and the expected finish time, even for hundreds of entries.
 
-Closing it does not affect the simulations. Options: `--interval 10`, `--geometry 960x1040+960+0`, `--once picture.png`.
+The queue list fills the rest of the window height and scrolls with the mouse wheel. The window can be resized up to full screen; the layout adapts. Closing it does not affect the simulations. Options: `--interval 10`, `--geometry 960x1040+960+0`, `--once picture.png`.
 
 **Run queue:** many cases one after another, for example a parameter sweep:
 

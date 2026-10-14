@@ -37,9 +37,7 @@ SOLVERS = {"simpleFoam": "steady flow", "tracerFoam": "tracer", "pimpleFoam": "t
 TOOLS = ("blockMesh", "snappyHexMesh", "surfaceFeatureExtract", "gmshToFoam", "topoSet", "createPatch",
          "renumberMesh", "checkMesh", "decomposePar", "reconstructPar", "setFields", "wmake")
 MAX_RUN_ROWS = 4  # more parallel runs are listed in the header
-MAX_QUEUE_LINES = 16  # with fewer runs on screen the queue panel gets more lines (see draw)
 PLOT_POINTS = 1500  # longer series are thinned before plotting
-MAX_CPU_COLUMNS = 4  # cores are shown in up to 4 columns, then the columns grow longer
 
 # Dark theme. Run colors: the categorical palette's dark-mode steps, always in this order.
 BG, PANEL, GRID = "#1b1d21", "#22252a", "#34383f"
@@ -275,11 +273,24 @@ def _bar(fraction: float, width: int = 24) -> str:
     return "[" + "#" * filled + "." * (width - filled) + "]"
 
 
-def queue_lines(queues: list[dict], tail: int = 3) -> list[tuple[str, str]]:
-    """(text, color) lines for the queue panel, compact for queues with hundreds of entries.
+def _entry_line(e: dict) -> tuple[str, str]:
+    name = Path(e["config"]).stem[:30]
+    if e["status"] == "done":
+        t90 = e.get("t90_s")
+        t90 = ("t90 not reached" if math.isnan(t90) else f"t90 {t90:.1f} s") if isinstance(t90, (int, float)) else ""
+        return f"  done  {name:<30} {_duration(e['seconds']):>12}  {t90}", MUTED
+    if e["status"] == "running":
+        return f"  run   {name:<30} {_duration(time.time() - e['started']):>12}", TEXT
+    if e["status"] == "failed":
+        return f"  FAIL  {name:<30} {(e.get('error') or '')[:48]}", "#e66767"
+    return f"  wait  {name}", MUTED
 
-    Per queue: a summary (counts, progress, throughput, finish estimate), then only the
-    relevant entries: running ones, recent failures, the last finished and the next waiting.
+
+def queue_lines(queues: list[dict]) -> list[tuple[str, str]]:
+    """(text, color) lines for the scrollable queue panel.
+
+    Per queue: a summary (progress, counts, throughput, finish estimate), then every
+    entry: running, failed, waiting (in run order) and finished (newest first).
     """
     lines = []
     for q in queues:
@@ -299,22 +310,16 @@ def queue_lines(queues: list[dict], tail: int = 3) -> list[tuple[str, str]]:
             finish = time.strftime("%a %H:%M", time.localtime(time.time() + remaining)) if remaining else "-"
             lines.append((f"  avg {_duration(average)} per case ({3600 / average:.1f}/h)   "
                           f"left ~{_duration(remaining or 0)}   done ~{finish}", MUTED))
-        for e in by_status["failed"][-tail:]:
-            lines.append((f"  FAIL  {Path(e['config']).stem[:28]:<28} {(e.get('error') or '')[:36]}", "#e66767"))
-        for e in by_status["done"][-tail:]:
-            t90 = f"t90 {e['t90_s']:.1f} s" if isinstance(e.get("t90_s"), (int, float)) else ""
-            lines.append((f"  done  {Path(e['config']).stem[:28]:<28} {_duration(e['seconds']):>12}  {t90}", MUTED))
-        for e in by_status["running"]:
-            lines.append((f"  run   {Path(e['config']).stem[:28]:<28} {_duration(time.time() - e['started']):>12}",
-                          TEXT))
-        for e in by_status["pending"][:tail]:
-            lines.append((f"  wait  {Path(e['config']).stem[:28]}", MUTED))
-        if len(by_status["pending"]) > tail:
-            lines.append((f"        ... +{len(by_status['pending']) - tail} more waiting", MUTED))
+        for status in ("running", "failed", "pending"):
+            lines += [_entry_line(e) for e in by_status[status]]
+        lines += [_entry_line(e) for e in reversed(by_status["done"])]
+        lines.append(("", MUTED))
     return lines
 
 
 # --- Drawing -------------------------------------------------------------------------
+# Layout, top to bottom: title line | per run: info line + slim progress bar |
+# per run: two plots | CPU core bars | small notes | queue list (rest of the height, scrollable).
 
 
 def _style(ax, title: str) -> None:
@@ -407,112 +412,161 @@ def _empty_panel(ax) -> None:
         spine.set_color(GRID)
 
 
-def _info(ax, run: Run, color: str) -> None:
-    ax.axis("off")
-    ax.text(0, 1, run.name, fontsize=10, fontweight="bold", color=color, va="top", transform=ax.transAxes)
+def run_info(run: Run) -> tuple[str, float | None]:
+    """One-line status of a run and its progress (None while a mesh tool runs)."""
     if not run.is_solver:
         try:
             age = time.time() - min(p.create_time() for p in run.procs)
         except (psutil.Error, ValueError):
             age = 0
-        ax.text(0, 0.78, f"preparing: {run.program}\nrunning for {_duration(age)}", fontsize=8.5,
-                color=TEXT, va="top", family=MONO, linespacing=1.5, transform=ax.transAxes)
-        return
+        return f"preparing: {run.program}  ({_duration(age)})", None
     info = progress(run)
     unit = "it" if run.program == "simpleFoam" else "s"
     eta = info["eta_s"]
-    finish = "estimating ..." if eta is None else \
-        f"{_duration(eta)} (~{time.strftime('%H:%M', time.localtime(time.time() + eta))})"
-    lines = [f"{run.program}, {len(run.procs)} proc",
-             f"{info['now']:.6g} / {info['end']:.6g} {unit}",
-             f"left  {finish}"]
+    finish = "estimating" if eta is None else \
+        f"left {_duration(eta)} (~{time.strftime('%H:%M', time.localtime(time.time() + eta))})"
+    text = f"{run.program} {len(run.procs)}p   {info['now']:.6g}/{info['end']:.6g} {unit}   {info['fraction']:5.1%}   {finish}"
     if info["dt"] is not None:
-        lines.append(f"dt {info['dt']:.4f} s  Co {info['courant'] or 0:.1f}")
-    ax.text(0, 0.78, "\n".join(lines), fontsize=8.5, color=TEXT, va="top", family=MONO, linespacing=1.5,
-            transform=ax.transAxes)
-    for width, bar_color in ((1.0, GRID), (info["fraction"], color)):
-        ax.add_patch(Rectangle((0, 0.0), width, 0.07, color=bar_color, transform=ax.transAxes, clip_on=False))
-    ax.text(1.0, 0.1, f"{info['fraction']:.1%}", fontsize=8, color=TEXT, ha="right", transform=ax.transAxes)
+        text += f"   dt {info['dt']:.4f} s  Co {info['courant'] or 0:.1f}"
+    return text, info["fraction"]
 
 
-def cpu_grid(n_cores: int) -> tuple[int, int]:
-    """(rows, columns) of the core bars: 8 cores -> 4 x 2, 16 -> 4 x 4, 32 -> 8 x 4."""
-    cols = min(MAX_CPU_COLUMNS, max(1, math.ceil(n_cores / 4)))
-    return math.ceil(n_cores / cols), cols
+def _run_header(ax, run: Run, color: str) -> None:
+    """Title and status on one line, slim progress bar across the full width below."""
+    ax.axis("off")
+    text, fraction = run_info(run)
+    ax.text(0, 0.95, run.name, fontsize=10, fontweight="bold", color=color, va="top", transform=ax.transAxes)
+    ax.text(1, 0.95, text, fontsize=8.5, color=TEXT, va="top", ha="right", family=MONO, transform=ax.transAxes)
+    ax.add_patch(Rectangle((0, 0.0), 1.0, 0.16, color=GRID, transform=ax.transAxes, clip_on=False))
+    if fraction is not None:
+        ax.add_patch(Rectangle((0, 0.0), fraction, 0.16, color=color, transform=ax.transAxes, clip_on=False))
 
 
-def _cpu(ax, usage: list[float], owners: dict[int, int], perf: list[bool]) -> None:
+def cpu_grid(n_cores: int, width_in: float) -> tuple[int, int]:
+    """(rows, columns) of the core bars: about 2.2 inch per column, rows filled evenly.
+
+    8 cores: one row at full 16:9 width, 2 x 4 on half a screen.
+    """
+    fit = max(1, min(n_cores, int(width_in / 2.2)))
+    rows = math.ceil(n_cores / fit)
+    return rows, math.ceil(n_cores / rows)
+
+
+def _cpu(ax, usage: list[float], owners: dict[int, int], perf: list[bool], cols: int) -> None:
     """One compact bar per core, colored by the run whose process is on that core right now."""
     ax.axis("off")
-    rows, cols = cpu_grid(len(usage))
-    label_w, value_w, gap = 0.16, 0.14, 0.08
+    rows = math.ceil(len(usage) / cols)
+    label_w, value_w, gap = 0.17, 0.17, 0.1
     for core, load in enumerate(usage):
-        col, row = divmod(core, rows)
+        row, col = divmod(core, cols)
         x0, y = col * (1 + gap), rows - 1 - row
         color = RUN_COLORS[owners[core] % len(RUN_COLORS)] if core in owners else IDLE
         track = 1 - label_w - value_w
         ax.text(x0, y, f"{core:>2} {'P' if perf[core] else 'E'}", fontsize=7.5, color=MUTED, va="center", family=MONO)
-        ax.add_patch(Rectangle((x0 + label_w, y - 0.32), track, 0.64, color=GRID))
-        ax.add_patch(Rectangle((x0 + label_w, y - 0.32), track * min(load, 100) / 100, 0.64, color=color))
+        ax.add_patch(Rectangle((x0 + label_w, y - 0.3), track, 0.6, color=GRID))
+        ax.add_patch(Rectangle((x0 + label_w, y - 0.3), track * min(load, 100) / 100, 0.6, color=color))
         ax.text(x0 + 1, y, f"{load:3.0f}%", fontsize=7.5, color=TEXT, va="center", ha="right", family=MONO)
     ax.set_xlim(0, cols + gap * (cols - 1))
     ax.set_ylim(-0.6, rows - 0.4)
 
 
-def draw(fig, runs: list[Run], queues: list[dict], perf: list[bool]) -> None:
-    fig.clf()
-    fig.patch.set_facecolor(BG)
-    shown = runs[:MAX_RUN_ROWS]
-    usage = psutil.cpu_percent(percpu=True)
-    cpu_rows, _ = cpu_grid(len(usage))
-    n_run_rows = max(len(shown), 1)
-    max_lines = MAX_QUEUE_LINES + 8 * (MAX_RUN_ROWS - n_run_rows)
-    q_lines = queue_lines(queues)[:max_lines] or [("no queue (start one with: python -m cfd.queue ...)", MUTED)]
-    # Fixed sizes (in rough "inches"); unused run rows become free space at the bottom, so the
-    # layout does not jump when runs start and finish.
-    heights = [0.3] + [1.9] * n_run_rows + [0.25 + 0.24 * cpu_rows, 0.2 + 0.17 * len(q_lines)]
-    heights.append(max(0.05, 1.9 * (MAX_RUN_ROWS - n_run_rows) - 0.17 * len(q_lines)))
-    grid = fig.add_gridspec(len(heights), 3, height_ratios=heights, width_ratios=[1.0, 1.15, 1.15],
-                            left=0.05, right=0.98, top=0.985, bottom=0.01, hspace=0.45, wspace=0.3)
+class Monitor:
+    """Collects data on a timer and draws it; scrolling and resizing only redraw."""
 
-    head = fig.add_subplot(grid[0, :])
-    head.axis("off")
-    head.text(0, 1, "stosslueften  |  simulation monitor", fontsize=11, color=TEXT, va="top",
-              transform=head.transAxes)
-    extra = f" (+{len(runs) - len(shown)} more)" if len(runs) > len(shown) else ""
-    n_wait = sum(e["status"] == "pending" for q in queues for e in q["entries"])
-    head.text(1, 1, f"{time.strftime('%H:%M:%S')}   {len(runs)} running{extra}   {n_wait} queued",
-              fontsize=9, color=MUTED, va="top", ha="right", family=MONO, transform=head.transAxes)
+    LINE_PT = 8  # queue text size
 
-    if not shown:
-        ax = fig.add_subplot(grid[1, :])
+    def __init__(self, fig, max_runs: int = MAX_RUN_ROWS):
+        self.fig, self.max_runs = fig, max_runs
+        self.perf = performance_cores()
+        self.state: dict[Path, Run] = {}
+        self.runs: list[Run] = []
+        self.queues: list[dict] = []
+        self.usage: list[float] = []
+        self.queue_scroll = 0  # first visible queue line
+        self.queue_ax = None
+        psutil.cpu_percent(percpu=True)  # start the CPU load measurement
+
+    def refresh(self) -> None:
+        """Read processes, files and queues (the only part that touches the system)."""
+        self.state = find_runs(self.state)
+        self.runs = sorted(self.state.values(), key=lambda r: r.name)  # stable order = stable colors
+        self.queues = read_queues()
+        self.usage = psutil.cpu_percent(percpu=True)
+        self.draw()
+
+    def on_scroll(self, event) -> None:
+        if self.queue_ax is not None and event.inaxes is self.queue_ax:
+            self.queue_scroll = max(0, self.queue_scroll - 3 * int(event.step))
+            self.draw()
+
+    def draw(self) -> None:
+        fig = self.fig
+        fig.clf()
+        fig.patch.set_facecolor(BG)
+        width_in, height_in = fig.get_size_inches()
+        shown = self.runs[: self.max_runs]
+        n = max(len(shown), 1)
+        cpu_rows, cpu_cols = cpu_grid(len(self.usage), width_in * 0.94)
+        owners, notes = core_owners(shown)
+        q_lines = queue_lines(self.queues) or [("no queue (start one with: python -m cfd.queue ...)", MUTED)]
+
+        # Row heights in inches: fixed parts first, the queue list gets what is left.
+        title_h, header_h = 0.3, 0.42 * n
+        plots_h = n * min(max(0.28 * height_in / n ** 0.5, 1.3), 3.2)
+        cpu_h, notes_h = 0.15 + 0.22 * cpu_rows, 0.16 * (len(notes) + 1)
+        queue_h = max(height_in - (title_h + header_h + plots_h + cpu_h + notes_h) - 0.45, 1.0)
+        outer = fig.add_gridspec(6, 1, height_ratios=[title_h, header_h, plots_h, cpu_h, notes_h, queue_h],
+                                 left=0.045, right=0.985, top=0.99, bottom=0.01, hspace=0.22)
+
+        title = fig.add_subplot(outer[0])
+        title.axis("off")
+        title.text(0, 0.9, "stosslueften  |  simulation monitor", fontsize=11, color=TEXT, va="top",
+                   transform=title.transAxes)
+        extra = f" (+{len(self.runs) - len(shown)} more)" if len(self.runs) > len(shown) else ""
+        n_wait = sum(e["status"] == "pending" for q in self.queues for e in q["entries"])
+        title.text(1, 0.9, f"{time.strftime('%H:%M:%S')}   {len(self.runs)} running{extra}   {n_wait} queued",
+                   fontsize=9, color=MUTED, va="top", ha="right", family=MONO, transform=title.transAxes)
+
+        headers = outer[1].subgridspec(n, 1, hspace=0.25)
+        plots = outer[2].subgridspec(n, 2, hspace=0.45, wspace=0.16)
+        if not shown:
+            ax = fig.add_subplot(headers[0])
+            ax.axis("off")
+            ax.text(0, 0.5, "no simulation running", fontsize=9, color=MUTED, va="center", transform=ax.transAxes)
+            for col in (0, 1):
+                _empty_panel(fig.add_subplot(plots[0, col]))
+        for i, run in enumerate(shown):
+            color = RUN_COLORS[i % len(RUN_COLORS)]
+            _safe(fig.add_subplot(headers[i]), _run_header, run, color)
+            panels = PLOTS.get(run.program)
+            for col in (0, 1):
+                ax = fig.add_subplot(plots[i, col])
+                if panels:
+                    _safe(ax, panels[col], run, color)
+                else:
+                    _empty_panel(ax)
+
+        _safe(fig.add_subplot(outer[3]), _cpu, self.usage, owners, self.perf, cpu_cols)
+        notes_ax = fig.add_subplot(outer[4])
+        notes_ax.axis("off")
+        notes_ax.text(0, 1, "\n".join(["CPU bars: color = run on that core, gray = other load", *notes]),
+                      fontsize=7, color=MUTED, va="top", family=MONO, linespacing=1.3, transform=notes_ax.transAxes)
+
+        # Queue list: only the visible lines are drawn; the mouse wheel scrolls.
+        self.queue_ax = ax = fig.add_subplot(outer[5])
         ax.axis("off")
-        _note(ax, "no simulation running")
-    for row, run in enumerate(shown, start=1):
-        color = RUN_COLORS[(row - 1) % len(RUN_COLORS)]
-        _safe(fig.add_subplot(grid[row, 0]), _info, run, color)
-        plots = PLOTS.get(run.program)
-        for col in (1, 2):
-            ax = fig.add_subplot(grid[row, col])
-            if plots:
-                _safe(ax, plots[col - 1], run, color)
-            else:
-                _empty_panel(ax)
-
-    owners, notes = core_owners(shown)
-    _safe(fig.add_subplot(grid[n_run_rows + 1, :2]), _cpu, usage, owners, perf)
-    note_ax = fig.add_subplot(grid[n_run_rows + 1, 2])
-    note_ax.axis("off")
-    note_ax.text(0, 1, "CPU load per core\ncolor = run on that core\n\n" + "\n".join(notes), fontsize=7,
-                 color=MUTED, va="top", family=MONO, linespacing=1.4, transform=note_ax.transAxes)
-
-    queue_ax = fig.add_subplot(grid[n_run_rows + 2, :])
-    queue_ax.axis("off")
-    line_height = 8 * 1.45 / 72 * fig.dpi  # pixels for 8 pt text with 1.45 line spacing
-    step = line_height / max(queue_ax.get_window_extent().height, 1)
-    for i, (text, color) in enumerate(q_lines):
-        queue_ax.text(0, 1 - i * step, text, fontsize=8, color=color, va="top", family=MONO,
-                      transform=queue_ax.transAxes)
+        line_px = self.LINE_PT * 1.45 / 72 * fig.dpi
+        visible = max(1, int(ax.get_window_extent().height // line_px) - 1)
+        self.queue_scroll = min(self.queue_scroll, max(0, len(q_lines) - visible))
+        step = line_px / max(ax.get_window_extent().height, 1)
+        for k, (text, color) in enumerate(q_lines[self.queue_scroll: self.queue_scroll + visible]):
+            ax.text(0, 1 - k * step, text, fontsize=self.LINE_PT, color=color, va="top", family=MONO,
+                    transform=ax.transAxes)
+        if len(q_lines) > visible:
+            last = min(self.queue_scroll + visible, len(q_lines))
+            ax.text(1, 1, f"lines {self.queue_scroll + 1}-{last} of {len(q_lines)}  (scroll)", fontsize=7,
+                    color=MUTED, va="top", ha="right", family=MONO, transform=ax.transAxes)
+        fig.canvas.draw_idle()
 
 
 def right_half_geometry(screen_w: int, screen_h: int) -> str:
@@ -527,6 +581,7 @@ def main(argv=None) -> None:
     parser.add_argument("--once", type=Path, help="save one snapshot to this PNG file instead of opening a window")
     parser.add_argument("--interval", type=float, default=5, help="refresh interval in seconds (default 5)")
     parser.add_argument("--geometry", help="window size and position as WIDTHxHEIGHT+X+Y (default: right half)")
+    parser.add_argument("--size", default="9.6x10.1", help="--once only: picture size in inches (WIDTHxHEIGHT)")
     args = parser.parse_args(argv)
 
     import matplotlib
@@ -534,30 +589,23 @@ def main(argv=None) -> None:
     matplotlib.use("Agg" if args.once else "TkAgg")
     import matplotlib.pyplot as plt
 
-    perf = performance_cores()
-    psutil.cpu_percent(percpu=True)  # start the CPU load measurement
-    state: dict[Path, Run] = {}
-
-    def refresh(fig) -> None:
-        nonlocal state
-        state = find_runs(state)
-        runs = sorted(state.values(), key=lambda r: r.name)  # stable order = stable colors
-        draw(fig, runs, read_queues(), perf)
-        fig.canvas.draw_idle()
-
-    fig = plt.figure(figsize=(9.6, 10.1), dpi=100)
+    width, height = (float(v) for v in args.size.split("x"))
+    fig = plt.figure(figsize=(width, height), dpi=100)
+    monitor = Monitor(fig)
     if args.once:
         time.sleep(1.0)  # give the CPU load measurement a moment
-        refresh(fig)
+        monitor.refresh()
         fig.savefig(args.once, facecolor=BG)
         print(f"saved {args.once}")
         return
     window = fig.canvas.manager.window
     fig.canvas.manager.set_window_title("stosslueften monitor")
     window.geometry(args.geometry or right_half_geometry(window.winfo_screenwidth(), window.winfo_screenheight()))
-    refresh(fig)
+    fig.canvas.mpl_connect("scroll_event", monitor.on_scroll)
+    fig.canvas.mpl_connect("resize_event", lambda event: monitor.draw())
+    monitor.refresh()
     timer = fig.canvas.new_timer(interval=int(args.interval * 1000))
-    timer.add_callback(refresh, fig)
+    timer.add_callback(monitor.refresh)
     timer.start()
     plt.show()
 

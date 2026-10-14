@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 
-from analysis.monitor import TailTable, queue_remaining_s, right_half_geometry
+from analysis.monitor import TailTable, cpu_grid, queue_remaining_s, right_half_geometry
 
 
 def test_tail_table_reads_only_new_complete_lines(tmp_path):
@@ -41,3 +41,9 @@ def test_queue_estimate_uses_the_average_duration():
         {"status": "pending", "seconds": None, "started": None},
     ]}
     assert abs(queue_remaining_s(state) - (150 + 100)) < 1  # one pending + the rest of the running one
+
+
+def test_cpu_grid_fills_rows_evenly():
+    assert cpu_grid(8, 9.0) == (2, 4)    # half a 16:9 screen
+    assert cpu_grid(8, 18.0) == (1, 8)   # full width
+    assert cpu_grid(32, 9.0) == (8, 4)   # many cores: longer columns

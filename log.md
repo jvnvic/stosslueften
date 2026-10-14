@@ -255,3 +255,13 @@ Template:
   - Interpreted the unclear sentence on the CPU bars ("We do need the huge processor load bars") as "compact" and told Daniel, so he can correct it.
   - Added tests for incremental reading, window placement and the queue estimate (121 pass).
 - **Human decisions / review:** Daniel asked for the restyle (right half of a 16:9 screen, dark, simple, modular for parallel runs and many cores, a queue list, light and stable), and pointed out that hundreds of runs will be coming.
+
+## 2026-10-14 — Monitor layout change
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Rearranged the monitor as specified. From top to bottom: each run's title and status on one line with a slim full-width progress bar, the two graphs side by side, the CPU core bars, one small notes line, then the queue list over the full remaining height.
+  - Made the queue list scrollable (mouse wheel) and complete: summary, running, failed, all waiting, then all finished entries. Only the visible lines are drawn.
+  - Made the layout recalculate on resize, so it works from half to full 16:9. The CPU bars fill their rows evenly (8 cores: 2 × 4 on half a screen, one row at full width).
+  - Shows "t90 not reached" instead of "nan". The example queue (three layouts on the new mesh) had finished: t90 is 76.4 s (opposite walls), 88.4 s (adjacent walls), and not reached within 10 min (same wall with one window tilted).
+- **Human decisions / review:** Daniel specified the new order of the panels, the scrollable queue and scaling to full 16:9.
