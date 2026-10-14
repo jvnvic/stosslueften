@@ -116,3 +116,13 @@ Template:
   - The first packaging run failed with "File exists" copy errors. The AI cleaned the package folder and reran only the packaging (`makepkg -R`), which succeeded.
   - Checked that the package contains all needed solvers and tools, and documented the workaround in the README.
 - **Human decisions / review:** Daniel started the AUR build and reported the failure. Installing the finished package (needs sudo) is done by Daniel.
+
+## 2026-10-14 — OpenFOAM installation check
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Explained why `of` was not found after installing. The shortcut is defined in `/etc/profile.d`, which only loads at login. Sourcing `etc/bashrc` directly works.
+  - Ran the official `pitzDaily` tutorial with `simpleFoam`. It converged in 281 iterations (about 4 s), so the installation works.
+  - Converted our default mesh with `gmshToFoam` and ran `checkMesh`. The result was "Mesh OK": one region, 160k cells, all 8 patches present, max aspect ratio 8.6, max skewness 1.36.
+  - Added the non-login-shell fallback to `AGENTS.md`.
+- **Human decisions / review:** Daniel installed the package with `sudo pacman -U`.

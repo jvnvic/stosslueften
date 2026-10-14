@@ -39,6 +39,7 @@ Each shell session:
 ```bash
 source .venv/bin/activate
 of    # loads OpenFOAM v2606 (alias from the AUR package); needed before any OpenFOAM command
+      # in non-login shells (and for agents) use: source /opt/OpenFOAM/OpenFOAM-v2606/etc/bashrc
 ```
 
 Working now:
