@@ -25,6 +25,8 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 5. The CFD pipeline may assume Linux with OpenFOAM sourced. Anything teammates run must work on any OS.
 6. When you add commands or folders, update the two sections below.
 7. Start simulations that take longer than a few minutes detached: `setsid nohup <command> > <log> 2>&1 &`. Processes started from an editor or agent session die when that session closes.
+   - To wait for a run, check its output file or use exact process names (`pgrep -x simpleFoam`).
+   - Never use `pgrep -f <pattern>`: the pattern also matches the shell that does the waiting, which then waits forever.
 8. **Keep [README.md](README.md) up to date.** Whenever the status, setup, commands or folders change, update it in the same commit. It is written for teammates, so keep it plain and short.
 
 ## Commands

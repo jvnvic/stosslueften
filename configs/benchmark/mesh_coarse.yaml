@@ -30,6 +30,7 @@ domain:                       # outdoor air region, in multiples of building hei
   lateral_H: 5
   top_H: 5
 mesh:                         # target cell sizes
+  mesher: gmsh                # gmsh (tetrahedra) | snappy (hex-dominant, snappyHexMesh)
   window_m: 0.07              # at sashes and window openings
   room_m: 0.28                 # inside the room
   building_m: 0.56             # outdoors near the building

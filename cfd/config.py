@@ -15,7 +15,8 @@ import yaml
 
 LAYOUTS = ("same_wall", "opposite_walls", "adjacent_walls")
 MODES = ("turn", "tilt")
-HINGES = ("left", "right")  # hinge side of the turn sash, seen from inside the room facing the window
+HINGES = ("left", "right")
+MESHERS = ("gmsh", "snappy")  # tetrahedra from Gmsh, or hex-dominant cells from snappyHexMesh  # hinge side of the turn sash, seen from inside the room facing the window
 # Allowed opening angles in degrees. Below the minimum the sash is almost closed
 # and the remaining gap would need extremely small mesh cells.
 ANGLE_LIMITS_DEG = {"turn": (5.0, 90.0), "tilt": (2.0, 15.0)}
@@ -62,8 +63,9 @@ class Domain:
 
 @dataclass(frozen=True)
 class MeshSizes:
-    """Target cell sizes in metres, from finest to coarsest."""
+    """Mesher and target cell sizes in metres, from finest to coarsest."""
 
+    mesher: str  # "gmsh" or "snappy"
     window_m: float
     room_m: float
     building_m: float
@@ -174,7 +176,9 @@ def _check_values(cfg: CaseConfig) -> None:
     for section in ("room", "window_size", "domain", "mesh", "flow"):
         group = getattr(cfg, section)
         for f in fields(group):
-            require(getattr(group, f.name) > 0, f"{section}.{f.name} must be > 0")
+            if f.type in ("float", "int"):
+                require(getattr(group, f.name) > 0, f"{section}.{f.name} must be > 0")
+    require(cfg.mesh.mesher in MESHERS, f"mesh.mesher {cfg.mesh.mesher!r}: must be one of {', '.join(MESHERS)}")
 
     size, room, mesh = cfg.window_size, cfg.room, cfg.mesh
     require(

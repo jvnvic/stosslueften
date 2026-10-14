@@ -81,6 +81,53 @@ def window_monitor(pw: PlacedWindow) -> str:
 """
 
 
+def mesh_levels(cfg: CaseConfig) -> dict[str, float]:
+    """snappyHexMesh: background cell size and refinement levels (each level halves the cell size).
+
+    The background size is window_m times a power of two close to far_m, so the
+    window, room and building sizes of the config are met as closely as possible.
+    """
+    m = cfg.mesh
+    base = m.window_m * 2 ** round(math.log2(m.far_m / m.window_m))
+
+    def level(size: float) -> int:
+        return max(0, round(math.log2(base / size)))
+
+    window = level(m.window_m)
+    return {"base": base, "building": level(m.building_m), "room": level(m.room_m), "window": window,
+            "sash": window + 1}  # sash plates (6 cm) need cells clearly smaller than their thickness
+
+
+def snappy_placeholders(cfg: CaseConfig) -> dict[str, str]:
+    from geometry.generate import domain_bounds  # imported here: geometry imports cfd.config
+
+    b, levels = domain_bounds(cfg), mesh_levels(cfg)
+    room, t, H = cfg.room, cfg.room.wall_thickness_m, cfg.building_height_m
+    geometry, regions = [], []
+    for pw in place_windows(cfg):
+        # Refinement box: the opening through the wall plus 15 cm all around.
+        corners = pw.opening_corners()
+        lo, hi = corners.min(axis=0) - 0.15, corners.max(axis=0) + 0.15
+        geometry.append(f"    {pw.name}Opening\n    {{\n        type box;\n        min  {_vector(lo)};\n"
+                        f"        max  {_vector(hi)};\n    }}")
+        regions.append(f"        {pw.name}Opening {{ mode inside; levels ((1e15 {levels['window']})); }}")
+    cells = [max(1, round(extent / levels["base"])) for extent in (b.x1 - b.x0, b.y1 - b.y0, b.z1)]
+    # A point in the air: the room centre, nudged so it never lies exactly on a cell face.
+    location = (room.width_m / 2 + 0.0123, room.depth_m / 2 + 0.0171, room.height_m / 2 + 0.0137)
+    return {
+        "BASE_SIZE": f"{levels['base']:g}",
+        "X0": f"{b.x0:g}", "X1": f"{b.x1:g}", "Y0": f"{b.y0:g}", "Y1": f"{b.y1:g}", "Z1": f"{b.z1:g}",
+        "NX": str(cells[0]), "NY": str(cells[1]), "NZ": str(cells[2]),
+        "L_BUILDING": str(levels["building"]), "L_ROOM": str(levels["room"]),
+        "L_WINDOW": str(levels["window"]), "L_SASH": str(levels["sash"]),
+        "NEAR_MIN": f"{-t - H:g} {-t - H:g} 0",
+        "NEAR_MAX": f"{room.width_m + t + H:g} {room.depth_m + t + 3 * H:g} {2 * H:g}",
+        "OPENING_GEOMETRY": "\n".join(geometry),
+        "OPENING_REGIONS": "\n".join(regions),
+        "LOCATION_IN_MESH": " ".join(f"{v:g}" for v in location),
+    }
+
+
 def placeholders(cfg: CaseConfig) -> dict[str, str]:
     profile = wind_profile(cfg)
     room = cfg.room
@@ -99,12 +146,14 @@ def placeholders(cfg: CaseConfig) -> dict[str, str]:
         "TRANSIENT_END": f"{cfg.flow.transient_spinup_s + cfg.flow.tracer_duration_s:g}",
         "MAX_COURANT": f"{cfg.flow.transient_max_courant:g}",
         "ROOM_MAX": f"{room.width_m:g} {room.depth_m:g} {room.height_m:g}",
+        "ROOM_FLOOR_MAX": f"{room.width_m:g} {room.depth_m:g} 0.01",
         "WINDOW_MONITORS": "\n".join(window_monitor(pw) for pw in place_windows(cfg)),
+        **snappy_placeholders(cfg),
     }
 
 
 def write_case_files(cfg: CaseConfig, case_dir: Path, stage: str) -> None:
-    """Copy every template of `stage` ("flow" or "tracer") into case_dir with the placeholders filled in."""
+    """Copy every template of `stage` (flow, snappy, tracer, transient) into case_dir with the placeholders filled in."""
     values = placeholders(cfg)
     stage_dir = TEMPLATES / stage
     for template in sorted(stage_dir.rglob("*")):

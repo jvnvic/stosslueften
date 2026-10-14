@@ -53,6 +53,18 @@ def _add_box(corners: np.ndarray) -> int:
     return gmsh.model.occ.addBox(*lo, *(hi - lo))
 
 
+def add_sashes(placed: tuple[PlacedWindow, ...]) -> list[int]:
+    """Open sash plates and hinge posts as OpenCASCADE volumes; returns their tags."""
+    occ = gmsh.model.occ
+    tags = []
+    for pw in placed:
+        plate = _add_box(pw.closed_sash_corners())
+        occ.rotate([(3, plate)], *pw.hinge_point, *pw.hinge_axis, pw.rotation_rad)
+        start, axis, radius = pw.hinge_post()
+        tags += [plate, occ.addCylinder(*start, *axis, radius)]
+    return tags
+
+
 def build_model(cfg: CaseConfig, placed: tuple[PlacedWindow, ...]) -> tuple[int, dict[str, list[int]]]:
     """Create the air volume in the current Gmsh model.
 
@@ -66,12 +78,7 @@ def build_model(cfg: CaseConfig, placed: tuple[PlacedWindow, ...]) -> tuple[int,
     building = occ.addBox(-t, -t, 0, room.width_m + 2 * t, room.depth_m + 2 * t, cfg.building_height_m)
     room_air = occ.addBox(0, 0, 0, room.width_m, room.depth_m, room.height_m)
     openings = [_add_box(pw.opening_corners()) for pw in placed]
-    sashes = []
-    for pw in placed:
-        plate = _add_box(pw.closed_sash_corners())
-        occ.rotate([(3, plate)], *pw.hinge_point, *pw.hinge_axis, pw.rotation_rad)
-        start, axis, radius = pw.hinge_post()
-        sashes += [plate, occ.addCylinder(*start, *axis, radius)]
+    sashes = add_sashes(placed)
 
     # Air = (domain minus building) + room + window openings, minus sashes and hinge posts.
     outdoor, _ = occ.cut([(3, domain)], [(3, building)])

@@ -1,0 +1,21 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      createPatchDict;
+}
+
+// The room floor lies on the ground plane of the block mesh. Move these faces
+// (faceSet roomFloor from topoSetDict) from the rough ground to the room walls.
+pointSync false;
+
+patches
+(
+    {
+        name            room_walls;
+        patchInfo       { type wall; }
+        constructFrom   set;
+        set             roomFloor;
+    }
+);

@@ -31,6 +31,7 @@ from analysis.metrics import fresh_fraction_curve, read_series, tracer_bounds, t
 from cfd.case_setup import set_patch_types, write_case_files
 from cfd.config import CaseConfig, ConfigError, load_config
 from geometry.generate import generate
+from geometry.surfaces import write_obstacle_stl
 
 CASES = Path("cases")
 TRACER_SOLVER = Path(__file__).parent / "solvers" / "tracerFoam"
@@ -73,15 +74,38 @@ def _latest_time(case_dir: Path) -> str:
 # --- Stage 1: steady wind flow -------------------------------------------------
 
 
-def prepare_flow(cfg: CaseConfig, case_dir: Path) -> None:
-    """Mesh the geometry, convert the mesh for OpenFOAM and write the flow case files."""
-    if case_dir.exists():
-        shutil.rmtree(case_dir)
+def _mesh_gmsh(cfg: CaseConfig, case_dir: Path) -> None:
+    """Tetrahedral mesh from Gmsh, converted for OpenFOAM."""
     generate(cfg, case_dir)  # writes case_dir/mesh.msh
-    write_case_files(cfg, case_dir, "flow")
     _foam(["gmshToFoam", "mesh.msh"], case_dir)
+    (case_dir / "constant" / "polyMesh" / "cellZones").unlink()  # zone "fluid" (all cells); "room" follows
     set_patch_types(case_dir)
     _foam(["topoSet"], case_dir)  # cellZone "room"
+
+
+def _mesh_snappy(cfg: CaseConfig, case_dir: Path) -> None:
+    """Hex-dominant mesh: block mesh of the domain, refined and cut around the building by snappyHexMesh."""
+    write_obstacle_stl(cfg, case_dir / "constant" / "triSurface" / "obstacle.stl")
+    write_case_files(cfg, case_dir, "snappy")
+    _foam(["surfaceFeatureExtract"], case_dir)  # sharp edges -> constant/triSurface/obstacle.eMesh
+    _foam(["blockMesh"], case_dir)
+    _foam(["snappyHexMesh", "-overwrite"], case_dir)
+    _foam(["topoSet"], case_dir)  # cellZone "room" and faceSet "roomFloor"
+    _foam(["createPatch", "-overwrite"], case_dir)  # room floor: ground -> room_walls
+
+
+def prepare_flow(cfg: CaseConfig, case_dir: Path) -> None:
+    """Mesh the geometry with the configured mesher and write the flow case files."""
+    if case_dir.exists():
+        shutil.rmtree(case_dir)
+    write_case_files(cfg, case_dir, "flow")
+    # Keep the initial fields out of the way while mesh tools change the mesh (some would remap them).
+    (case_dir / "0").rename(case_dir / "0.orig")
+    if cfg.mesh.mesher == "snappy":
+        _mesh_snappy(cfg, case_dir)
+    else:
+        _mesh_gmsh(cfg, case_dir)
+    (case_dir / "0.orig").rename(case_dir / "0")
     _foam(["renumberMesh", "-overwrite"], case_dir)  # faster linear solvers
     if "Failed" in _foam(["checkMesh"], case_dir):
         raise RuntimeError(f"checkMesh found mesh problems, see {case_dir / 'log.checkMesh'}")

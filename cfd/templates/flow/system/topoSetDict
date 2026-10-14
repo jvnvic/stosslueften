@@ -6,16 +6,9 @@ FoamFile
     object      topoSetDict;
 }
 
-// Mark the cells inside the room as cellZone "room" (used for room averages).
-// A cell can only belong to one cellZone, so the zone "fluid" that gmshToFoam
-// creates for the whole air volume is removed first.
 actions
 (
-    {
-        name    fluid;
-        type    cellZoneSet;
-        action  remove;
-    }
+    // Cells inside the room -> cellZone "room" (used for room averages).
     {
         name    room;
         type    cellSet;
@@ -29,5 +22,22 @@ actions
         action  new;
         source  setToCellZone;
         set     room;
+    }
+
+    // Ground faces inside the room = the room floor. Only snappyHexMesh meshes have
+    // such faces (createPatch then moves them to room_walls); for Gmsh meshes the set is empty.
+    {
+        name    roomFloor;
+        type    faceSet;
+        action  new;
+        source  patchToFace;
+        patch   ground;
+    }
+    {
+        name    roomFloor;
+        type    faceSet;
+        action  subset;
+        source  boxToFace;
+        box     (0 0 -0.01) (@ROOM_FLOOR_MAX@);
     }
 );

@@ -1,0 +1,100 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+
+// Hex-dominant mesh around the building, set up like the OpenFOAM tutorial
+// windAroundBuildings. Each refinement level halves the cell size of the
+// background mesh (@BASE_SIZE@ m): level @L_BUILDING@ near the building, @L_ROOM@ in the room,
+// @L_WINDOW@ in the window openings and @L_SASH@ at the sashes.
+
+#includeEtc "caseDicts/mesh/generation/snappyHexMeshDict.cfg"
+
+castellatedMesh on;
+snap            on;
+addLayers       off;
+
+geometry
+{
+    obstacle.stl
+    {
+        type triSurfaceMesh;
+        name obstacle;
+        regions
+        {
+            building    { name building; }
+            room_walls  { name room_walls; }
+            sashes      { name sashes; }
+        }
+    }
+    room
+    {
+        type box;
+        min  (0 0 0);
+        max  (@ROOM_MAX@);
+    }
+    nearBuilding
+    {
+        type box;
+        min  (@NEAR_MIN@);
+        max  (@NEAR_MAX@);
+    }
+@OPENING_GEOMETRY@
+}
+
+castellatedMeshControls
+{
+    maxLocalCells   10000000;
+    features
+    (
+        { file "obstacle.eMesh"; level @L_ROOM@; }
+    );
+    refinementSurfaces
+    {
+        obstacle
+        {
+            level (@L_BUILDING@ @L_BUILDING@);
+            regions
+            {
+                building    { level (@L_BUILDING@ @L_ROOM@); patchInfo { type wall; } }
+                room_walls  { level (@L_ROOM@ @L_ROOM@); patchInfo { type wall; } }
+                sashes      { level (@L_SASH@ @L_SASH@); patchInfo { type wall; } }
+            }
+        }
+    }
+    refinementRegions
+    {
+        nearBuilding    { mode inside; levels ((1e15 @L_BUILDING@)); }
+        room            { mode inside; levels ((1e15 @L_ROOM@)); }
+@OPENING_REGIONS@
+    }
+    locationInMesh (@LOCATION_IN_MESH@);   // a point in the air (in the room)
+}
+
+snapControls
+{
+    explicitFeatureSnap    true;    // snap exactly onto the sharp edges in obstacle.eMesh
+    implicitFeatureSnap    false;
+}
+
+addLayersControls
+{
+    layers {}
+    relativeSizes       true;
+    expansionRatio      1.2;
+    finalLayerThickness 0.5;
+    minThickness        1e-3;
+}
+
+meshQualityControls
+{}
+
+writeFlags
+(
+    noRefinement
+);
+
+mergeTolerance 1e-6;

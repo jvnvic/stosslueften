@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from cfd.case_setup import PATCH_TYPES, set_patch_types, wind_profile, write_case_files
+from cfd.case_setup import PATCH_TYPES, mesh_levels, set_patch_types, wind_profile, write_case_files
 
 
 def test_wind_profile_matches_the_log_law(make_config):
@@ -15,7 +15,7 @@ def test_wind_profile_matches_the_log_law(make_config):
     assert u_star / 0.40 * math.log((H + z0) / z0) == pytest.approx(cfg.wind_speed_ms)
 
 
-@pytest.mark.parametrize("stage", ["flow", "tracer", "transient"])
+@pytest.mark.parametrize("stage", ["flow", "snappy", "tracer", "transient"])
 def test_all_placeholders_are_filled(make_config, tmp_path, stage):
     cfg = make_config("same_wall", w1=(1.4, "turn", 45), w2=(3.6, "tilt", 6))
     write_case_files(cfg, tmp_path, stage)
@@ -26,6 +26,10 @@ def test_all_placeholders_are_filled(make_config, tmp_path, stage):
         assert "internalField   uniform (0 3 0);" in (tmp_path / "0" / "U").read_text()
         monitors = (tmp_path / "system" / "monitors").read_text()
         assert "window1Flow" in monitors and "window2Flow" in monitors
+    elif stage == "snappy":
+        block = (tmp_path / "system" / "blockMeshDict").read_text()
+        assert "hex (0 1 2 3 4 5 6 7) (21 38 10)" in block  # 1.6 m background cells
+        assert "window2Opening" in (tmp_path / "system" / "snappyHexMeshDict").read_text()
     elif stage == "tracer":
         control = (tmp_path / "system" / "controlDict").read_text()
         assert "endTime         600;" in control and "deltaT          0.2;" in control
@@ -50,3 +54,9 @@ def test_patch_types_are_set(tmp_path):
     assert "ground\n    {\n        type            wall;\n        physicalType    wall;" in text
     assert "sides\n    {\n        type            symmetry;" in text
     assert "inlet\n    {\n        type            patch;" in text
+
+
+def test_mesh_levels_match_the_configured_sizes(make_config):
+    levels = mesh_levels(make_config())
+    # Background 1.6 m; 0.4 m near the building, 0.2 m in the room, 0.05 m in the openings, 0.025 m at sashes.
+    assert levels == {"base": pytest.approx(1.6), "building": 2, "room": 3, "window": 5, "sash": 6}
