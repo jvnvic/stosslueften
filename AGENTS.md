@@ -26,6 +26,7 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 5. The CFD pipeline may assume Linux with OpenFOAM sourced. Anything teammates run must work on any OS.
 6. When you add commands or folders, update the two sections below.
 7. Start simulations that take longer than a few minutes detached: `setsid nohup <command> > <log> 2>&1 &`. Processes started from an editor or agent session die when that session closes.
+   - Start case runs through `python -m cfd.queue` (also single runs and `--transient`), so that they appear in the monitor's queue list.
    - To wait for a run, check its output file or use exact process names (`pgrep -x simpleFoam`).
    - Never use `pgrep -f <pattern>`: the pattern also matches the shell that does the waiting, which then waits forever.
 8. **Keep [README.md](README.md) up to date.** Whenever the status, setup, commands or folders change, update it in the same commit. It is written for teammates, so keep it plain and short.
@@ -61,6 +62,7 @@ python -m cfd.run_case --config configs/benchmark/same_wall.yaml --transient --p
 python -m cfd.run_case --config configs/benchmark/same_wall.yaml --transient --resume   # continue it after an interruption
 python -m analysis.monitor                                    # live progress window (--once <png> for a snapshot)
 python -m cfd.queue configs/a.yaml configs/b.yaml             # run cases one after another (start detached)
+python -m cfd.queue --transient --procs 4 configs/a.yaml      # option-B comparison runs as a queue
 python -m cfd.queue --resume cases/queues/<name>.json         # continue an interrupted queue
 ```
 
@@ -83,7 +85,7 @@ Not implemented yet (PLAN.md §4): the transient comparison run (benchmark optio
 - `analysis/metrics.py` computes `fresh_frac_XXXs`, `t90_s` and `tau_s` (PLAN.md §3) from the room-average tracer.
 - The boundary conditions follow the OpenFOAM v2606 validation case `atmDownstreamDevelopment`: a log-law wind profile at the inlet, k-ω SST turbulence, rough ground via `atmNutkWallFunction`, and a fixed shear stress at the top.
 - `cfd/run_case.py` runs the chain: Gmsh mesh, `gmshToFoam`, patch types, `topoSet` (cellZone `room`), `renumberMesh`, `checkMesh`, then `simpleFoam` in parallel. It writes `summary.json`.
-- `cfd/queue.py` runs cases sequentially via `cfd.run_case`. It writes `cases/queues/<start>.json` atomically (status per entry: pending/running/done/failed, duration, t90). `--resume` continues after an interruption. Several queues can run side by side (e.g. with `--procs 4`).
+- `cfd/queue.py` runs cases sequentially via `cfd.run_case`. It writes `cases/queues/<start>.json` atomically (status per entry: pending/running/done/failed, duration, t90). `--transient` queues option-B comparison runs. `--resume` continues after an interruption. Several queues can run side by side (e.g. with `--procs 4`).
 - `analysis/monitor.py` is a live matplotlib/Tk window, dark theme, sized to the right half of a 16:9 screen.
   - Data: running solvers and mesh tools from psutil (one row each, up to 4), per-core load in a compact grid for any core count, and the queue files.
   - Large queues are summarised: counts, throughput, finish estimate, and only the relevant entries.

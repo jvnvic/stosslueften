@@ -274,3 +274,16 @@ Template:
   - Updated the status line in `AGENTS.md` and turned PLAN.md §9 into an ordered list of next steps: repeat the solver benchmark on the new mesh, sweep generator, dataset writer, run the sweep, open decisions.
   - Saved machine state (file indexing disabled, thermal throttling, OpenFOAM build fix) and working preferences in the assistant's local memory.
 - **Human decisions / review:** Daniel asked for the preparation.
+
+## 2026-10-14 — Solver benchmark on the snappy mesh (started), queue for transient runs
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Added `configs/benchmark/snappy_same_wall.yaml`: the same-wall benchmark case on the snappy mesh.
+  - Ran option A for it. Its result differs strongly from the tetrahedral mesh:
+    - t90 581 s (was 313 s) and τ 249 s (was 143 s).
+    - Almost no air flows from one window to the other (net flow ≈ 0, was 785 m³/h), so the exchange is single-sided.
+    - τ now matches the empirical single-sided estimate (210–250 s).
+  - Started option B (transient) for the default and the same-wall case, in parallel with 4 cores each. As in the first benchmark, the default's tracer phase is cut to 300 s.
+  - Added `--transient` to `cfd.queue`, so comparison runs can also be queued and show up in the monitor's queue list. The monitor marks such queues as "transient".
+- **Human decisions / review:** Daniel asked to continue with the benchmark repeat. He asked that the next runs go through the queue so they show up in the monitor, and checked that the work matches PLAN.md §9 step 1.

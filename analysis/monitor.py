@@ -298,7 +298,8 @@ def queue_lines(queues: list[dict]) -> list[tuple[str, str]]:
         by_status = {s: [e for e in entries if e["status"] == s] for s in ("done", "running", "failed", "pending")}
         n_finished = len(by_status["done"]) + len(by_status["failed"])
         state = "running" if q["alive"] else ("finished" if q.get("finished") else "STOPPED (resume with --resume)")
-        lines.append((f"queue {q['name']}  {state}", TEXT))
+        kind = "  transient" if q.get("transient") else ""
+        lines.append((f"queue {q['name']}{kind}  {state}", TEXT))
         lines.append((f"  {_bar(n_finished / max(len(entries), 1))} {n_finished}/{len(entries)}   "
                       f"done {len(by_status['done'])}  run {len(by_status['running'])}  "
                       f"failed {len(by_status['failed'])}  wait {len(by_status['pending'])}",

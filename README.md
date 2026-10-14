@@ -109,10 +109,11 @@ python -m pytest                                                              # 
 
 The queue list fills the rest of the window height and scrolls with the mouse wheel. The window can be resized up to full screen; the layout adapts. Closing it does not affect the simulations. Options: `--interval 10`, `--geometry 960x1040+960+0`, `--once picture.png`.
 
-**Run queue:** many cases one after another, for example a parameter sweep:
+**Run queue:** many cases one after another, for example a parameter sweep. Start runs this way, even single ones, so that they show up in the monitor's queue list:
 
 ```bash
 setsid nohup python -m cfd.queue configs/examples/*.yaml > cases/queue.out 2>&1 &
+setsid nohup python -m cfd.queue --transient --procs 4 configs/benchmark/snappy_medium.yaml > cases/queue_b.out 2>&1 &   # comparison runs
 setsid nohup python -m cfd.queue --resume cases/queues/<name>.json > cases/queue.out 2>&1 &   # after an interruption
 ```
 

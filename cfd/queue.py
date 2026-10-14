@@ -4,13 +4,14 @@ Usage, from the repository root with the venv active and OpenFOAM loaded. Start 
 detached so that it survives closing the terminal or editor:
     setsid nohup python -m cfd.queue configs/benchmark/snappy_*.yaml > cases/queue.out 2>&1 &
     python -m cfd.queue --procs 4 configs/a.yaml configs/b.yaml    # --procs is passed on to run_case
+    python -m cfd.queue --transient --procs 4 configs/a.yaml        # comparison runs (needs the flow result)
 
 Each queue writes its status to cases/queues/<start time>.json. The monitor
 (python -m analysis.monitor) reads all of them, so several queues can run side by
 side, for example two queues with --procs 4 each.
 
 If a queue was interrupted (reboot, power cut), continue it; the case that was
-running is started again, finished cases are kept:
+running is started again from its beginning, finished cases are kept:
     setsid nohup python -m cfd.queue --resume cases/queues/<name>.json > cases/queue.out 2>&1 &
 """
 
@@ -37,10 +38,11 @@ def write_state(path: Path, state: dict) -> None:
     os.replace(tmp, path)
 
 
-def _result(case_id: str) -> float | None:
+def _result(case_id: str, transient: bool) -> float | None:
     summary = CASES / case_id / "summary.json"
     try:
-        return json.loads(summary.read_text()).get("t90_s")
+        summary = json.loads(summary.read_text())
+        return (summary.get("transient", {}) if transient else summary).get("t90_s")
     except (OSError, ValueError):
         return None
 
@@ -59,6 +61,8 @@ def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description="Run several cases one after another.")
     parser.add_argument("configs", nargs="*", type=Path, help="case YAML files, run in this order")
     parser.add_argument("--procs", type=int, help="CPU cores per case (passed on to run_case)")
+    parser.add_argument("--transient", action="store_true",
+                        help="comparison runs with time-varying flow (run_case --transient); each case needs its flow result")
     parser.add_argument("--resume", type=Path, help="continue an interrupted queue (its cases/queues/*.json file)")
     args = parser.parse_args(argv)
     if bool(args.configs) == bool(args.resume):
@@ -87,6 +91,7 @@ def main(argv=None) -> None:
             "started": time.time(),
             "finished": None,
             "procs": args.procs,
+            "transient": args.transient,
             "entries": [
                 {"config": str(config), "case_id": case_id, "status": "pending", "started": None,
                  "seconds": None, "t90_s": None, "error": None}
@@ -95,19 +100,20 @@ def main(argv=None) -> None:
         }
     write_state(path, state)
     procs = args.procs or state.get("procs")
-    extra = ["--procs", str(procs)] if procs else []
+    transient = state.get("transient", False)
+    extra = (["--procs", str(procs)] if procs else []) + (["--transient"] if transient else [])
     for entry in state["entries"]:
         if entry["status"] != "pending":
             continue
         entry["status"], entry["started"] = "running", time.time()
         write_state(path, state)
-        log = CASES / f"{entry['case_id']}.queue.log"
+        log = CASES / f"{entry['case_id']}.{'transient.' if transient else ''}queue.log"
         with log.open("w") as out:
             result = subprocess.run([sys.executable, "-m", "cfd.run_case", "--config", entry["config"], *extra],
                                     stdout=out, stderr=subprocess.STDOUT)
         entry["seconds"] = round(time.time() - entry["started"], 1)
         if result.returncode == 0:
-            entry["status"], entry["t90_s"] = "done", _result(entry["case_id"])
+            entry["status"], entry["t90_s"] = "done", _result(entry["case_id"], transient)
         else:
             lines = log.read_text(errors="replace").strip().splitlines()
             entry["status"], entry["error"] = "failed", (lines[-1] if lines else f"exit code {result.returncode}")
