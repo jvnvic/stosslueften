@@ -1,0 +1,40 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      k;
+}
+
+dimensions      [0 2 -2 0 0 0 0];
+
+internalField   uniform @K_INIT@;      // u*^2 / sqrt(Cmu), the log-law value
+
+boundaryField
+{
+    inlet
+    {
+        type            atmBoundaryLayerInletK;
+        #include        "include/ABLConditions"
+        value           uniform 0;
+    }
+    outlet
+    {
+        type            inletOutlet;
+        inletValue      $internalField;
+        value           $internalField;
+    }
+    top
+    {
+        type            zeroGradient;
+    }
+    sides
+    {
+        type            symmetry;
+    }
+    "(ground|building|room_walls|sashes)"
+    {
+        type            kqRWallFunction;
+        value           $internalField;
+    }
+}

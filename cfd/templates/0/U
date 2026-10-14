@@ -1,0 +1,43 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 @WIND_SPEED@ 0);
+
+boundaryField
+{
+    inlet
+    {
+        type            atmBoundaryLayerInletVelocity;
+        #include        "include/ABLConditions"
+        value           uniform (0 0 0);
+    }
+    outlet
+    {
+        type            inletOutlet;
+        inletValue      uniform (0 0 0);
+        value           $internalField;
+    }
+    top
+    {
+        // Constant shear stress u*^2 at the top keeps the wind profile from
+        // decaying along the domain (Hargreaves & Wright 2007).
+        type            fixedShearStress;
+        tau             (0 @USTAR_SQ@ 0);
+        value           $internalField;
+    }
+    sides
+    {
+        type            symmetry;
+    }
+    "(ground|building|room_walls|sashes)"
+    {
+        type            noSlip;
+    }
+}

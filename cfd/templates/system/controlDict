@@ -1,0 +1,32 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+
+libs            (atmosphericModels);    // atmBoundaryLayer* and atmNutkWallFunction
+
+application     simpleFoam;             // steady-state, incompressible
+
+startFrom       latestTime;
+startTime       0;
+stopAt          endTime;
+endTime         @MAX_ITERATIONS@;       // one "time step" = one solver iteration
+deltaT          1;
+
+writeControl    timeStep;
+writeInterval   @MAX_ITERATIONS@;       // write only the final result
+purgeWrite      0;
+writeFormat     binary;
+writePrecision  8;
+writeCompression off;
+timeFormat      general;
+timePrecision   6;
+runTimeModifiable true;
+
+functions
+{
+    #include "monitors"
+}

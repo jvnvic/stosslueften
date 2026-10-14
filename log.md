@@ -126,3 +126,15 @@ Template:
   - Converted our default mesh with `gmshToFoam` and ran `checkMesh`. The result was "Mesh OK": one region, 160k cells, all 8 patches present, max aspect ratio 8.6, max skewness 1.36.
   - Added the non-login-shell fallback to `AGENTS.md`.
 - **Human decisions / review:** Daniel installed the package with `sudo pacman -U`.
+
+## 2026-10-14 — First wind simulation of the default room
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Studied the official OpenFOAM v2606 validation case for atmospheric wind (`atmDownstreamDevelopment`, k-ω SST variant) and based our boundary conditions on it: log-law wind profile at the inlet, rough ground, constant shear stress at the top, symmetry at the sides.
+  - Wrote OpenFOAM case templates (`cfd/templates/`), a setup module that fills them in per case (`cfd/case_setup.py`), and a runner that does everything with one command (`cfd/run_case.py`). The runner meshes, converts, sets patch types, marks the room cells, checks the mesh, solves in parallel and writes a summary.
+  - Added a `flow` section to the config: ground roughness, maximum iterations, CPU cores.
+  - Ran the default case. Mesh check OK, 160k cells, 2000 iterations in 4.4 min on 8 cores. About 7,736 m³/h flows in through window 1 and 7,731 m³/h out through window 2. Normalized by window area and wind speed (0.58), this is within the typical range for cross-ventilation. The residuals level off, but the monitored values are stable from about iteration 600.
+  - Wrote `analysis/visualize.py`, a plan-view picture at window height with air speed (one-hue blue scale) and streamlines, after checking the data-visualization guidelines. Improved the picture over three render rounds and added it to the README.
+  - Added tests for the case setup (all pass).
+- **Human decisions / review:** Daniel asked for a test simulation of the default room.

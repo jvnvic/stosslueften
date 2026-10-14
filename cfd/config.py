@@ -71,6 +71,15 @@ class MeshSizes:
 
 
 @dataclass(frozen=True)
+class Flow:
+    """Wind profile and solver settings (PLAN.md §1 and §5)."""
+
+    roughness_length_m: float  # ground roughness z0 of the wind profile
+    max_iterations: int  # the steady solver stops here at the latest
+    n_procs: int  # CPU cores used for one case
+
+
+@dataclass(frozen=True)
 class CaseConfig:
     case_id: str
     layout: str
@@ -82,13 +91,14 @@ class CaseConfig:
     clearance_m: float
     domain: Domain
     mesh: MeshSizes
+    flow: Flow
 
     @property
     def building_height_m(self) -> float:
         return self.room.height_m + self.room.wall_thickness_m
 
 
-_NESTED = {cls.__name__: cls for cls in (Room, WindowSize, Window, Domain, MeshSizes)}
+_NESTED = {cls.__name__: cls for cls in (Room, WindowSize, Window, Domain, MeshSizes, Flow)}
 
 
 def load_config(path: str | Path) -> CaseConfig:
@@ -124,6 +134,9 @@ def _build(cls, data, where: str):
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 raise ConfigError(f"{key}: expected a number, got {value!r}")
             value = float(value)
+        elif f.type == "int":
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ConfigError(f"{key}: expected a whole number, got {value!r}")
         elif f.type == "str" and not isinstance(value, str):
             raise ConfigError(f"{key}: expected text, got {value!r}")
         values[f.name] = value
@@ -154,7 +167,7 @@ def _check_values(cfg: CaseConfig) -> None:
         )
     require(cfg.wind_speed_ms > 0, "wind_speed_ms must be > 0")
     require(cfg.clearance_m > 0, "clearance_m must be > 0")
-    for section in ("room", "window_size", "domain", "mesh"):
+    for section in ("room", "window_size", "domain", "mesh", "flow"):
         group = getattr(cfg, section)
         for f in fields(group):
             require(getattr(group, f.name) > 0, f"{section}.{f.name} must be > 0")

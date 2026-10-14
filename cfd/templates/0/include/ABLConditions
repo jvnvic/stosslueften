@@ -1,0 +1,11 @@
+// Atmospheric boundary layer (log-law wind profile), shared by U, k and omega.
+// Same setup as the OpenFOAM validation case atmDownstreamDevelopment.
+
+kappa       0.40;               // von Karman constant
+Cmu         0.09;
+flowDir     (0 1 0);            // wind from the south, blowing north (+y)
+zDir        (0 0 1);
+Uref        @WIND_SPEED@;       // wind speed at the reference height [m/s]
+Zref        @ZREF@;             // reference height = roof height [m]
+z0          uniform @Z0@;       // ground roughness length [m]
+d           uniform 0;          // displacement height [m]

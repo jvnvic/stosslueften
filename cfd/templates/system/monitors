@@ -1,0 +1,35 @@
+// Values written to postProcessing/ while the solver runs.
+
+residuals
+{
+    type            solverInfo;
+    libs            (utilityFunctionObjects);
+    fields          (U p k omega);
+}
+
+speed
+{
+    type            mag;
+    libs            (fieldFunctionObjects);
+    field           U;
+    result          magU;
+    executeControl  timeStep;
+    writeControl    writeTime;
+}
+
+// Mean air speed inside the room: a simple convergence indicator.
+roomAverage
+{
+    type            volFieldValue;
+    libs            (fieldFunctionObjects);
+    regionType      cellZone;
+    name            room;
+    operation       volAverage;
+    fields          (magU);
+    writeFields     false;
+    writeControl    timeStep;
+    writeInterval   10;
+}
+
+// Net air flow through each window opening [m^3/s], positive = into the room.
+@WINDOW_MONITORS@

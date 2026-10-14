@@ -34,3 +34,9 @@ mesh:                         # target cell sizes
   room_m: 0.2                 # inside the room
   building_m: 0.4             # outdoors near the building
   far_m: 2.0                  # far from the building
+
+# --- Flow solver (PLAN.md §1, §5) ---
+flow:
+  roughness_length_m: 0.03    # ground roughness z0 of the wind profile (open terrain)
+  max_iterations: 2000        # steady solver stops here at the latest
+  n_procs: 8                  # CPU cores used for one case

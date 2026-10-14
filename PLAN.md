@@ -79,6 +79,8 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 
 **Decision rule:** choose B if it stays at or below about 30 min per case (180 runs ≈ 4 days of compute). Otherwise choose A. Record how the curves differ, because that difference is a limitation to report.
 
+**First steady run (2026-10-14):** the default case on 160k tetrahedral cells with 8 cores ran 2000 iterations in 4.4 min. The residuals level off around 1e-3 to 1e-4, but the window flow has been stable to ±0.5 % since iteration ~600. Stopping once the monitored values are stable could cut this to about 1.5 min.
+
 **Caveat for A:** `scalarTransportFoam` in v2606 only has a constant diffusivity `DT` (checked in the source), which ignores turbulent mixing. A needs either a small modified copy of that solver with D = DT + νt/Sct (about 20 lines of C++), or another frozen-flow method found in week 1.
 
 ## 6. Checks before the big sweep

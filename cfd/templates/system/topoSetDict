@@ -1,0 +1,33 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+
+// Mark the cells inside the room as cellZone "room" (used for room averages).
+// A cell can only belong to one cellZone, so the zone "fluid" that gmshToFoam
+// creates for the whole air volume is removed first.
+actions
+(
+    {
+        name    fluid;
+        type    cellZoneSet;
+        action  remove;
+    }
+    {
+        name    room;
+        type    cellSet;
+        action  new;
+        source  boxToCell;
+        box     (0 0 0) (@ROOM_MAX@);
+    }
+    {
+        name    room;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        set     room;
+    }
+);

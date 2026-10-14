@@ -1,0 +1,36 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      nut;
+}
+
+dimensions      [0 2 -1 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    ground
+    {
+        // Rough-ground wall function that matches the inlet wind profile.
+        type            atmNutkWallFunction;
+        z0              uniform @Z0@;
+        value           uniform 0;
+    }
+    "(building|room_walls|sashes)"
+    {
+        type            nutkWallFunction;   // smooth walls
+        value           uniform 0;
+    }
+    sides
+    {
+        type            symmetry;
+    }
+    "(inlet|outlet|top)"
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+}

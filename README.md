@@ -12,8 +12,17 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 |---|---|
 | Project plan | ✅ [PLAN.md](PLAN.md) |
 | Geometry and mesh generator | ✅ |
-| OpenFOAM case (steady wind flow, tracer) | ⏳ next |
+| OpenFOAM case: steady wind flow | ✅ first test case runs |
+| Tracer (air replacement) and metrics | ⏳ next |
 | Solver benchmark, parameter sweep, dataset | planned |
+
+## First result
+
+![Air speed and streamlines in the default case](docs/images/default_flow.png)
+
+This is the default case: windows on opposite walls, both turned open 90°, with a 3 m/s wind from the south. The wind enters through the south window, crosses the room as a jet and leaves through the north window, with two slow vortices on either side of the jet. About **7,700 m³/h** of air flows through the 50 m³ room.
+
+The mesh has 160k cells, and the steady solve took 4.4 min on 8 cores. These are first test values on a coarse mesh and have not been checked for accuracy yet.
 
 ## What is simulated
 
@@ -55,8 +64,12 @@ You only need this on the **Linux machine that runs the simulations**. Teammates
 ```bash
 python -m geometry.generate --config configs/default.yaml                     # build + mesh -> cases/default/mesh.msh
 python -m geometry.render configs/default.yaml --out docs/images/default.png  # picture of the room setup
+python -m cfd.run_case --config configs/default.yaml                          # mesh + wind simulation (needs OpenFOAM, ~5 min)
+python -m analysis.visualize --config configs/default.yaml --out flow.png     # picture of the simulated flow
 python -m pytest                                                              # run all tests
 ```
+
+`cfd.run_case` writes everything to `cases/<case_id>/`. The key numbers go to `summary.json` there, and each OpenFOAM tool's output goes to a `log.<tool>` file.
 
 To try a different case:
 
@@ -71,7 +84,8 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 | Path | Contents |
 |---|---|
 | `configs/` | Case files (YAML), with one example per layout in `configs/examples/` |
-| `cfd/` | Config loading; later the OpenFOAM case setup and runner |
+| `cfd/` | Config loading, the OpenFOAM case templates and setup, and the case runner |
+| `analysis/` | Pictures (and later metrics) from solved cases |
 | `geometry/` | Window placement, the Gmsh geometry and mesh generator, and the 3D renders |
 | `docs/images/` | Pictures used in this README |
 | `tests/` | Automated tests |
