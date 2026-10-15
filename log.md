@@ -343,3 +343,9 @@ Template:
     - airflow from exact face fluxes.
   - Also proposed dropping wind speed from the sampled inputs, because results scale with it.
 - **Human decisions / review:** Daniel asked for the analysis. M1 and the wind-speed question are left to the team.
+
+## 2026-10-15 — One-page overview for the teacher
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:** Wrote a short web page for a reader without CFD background (published as a private Claude artifact). It covers the goal (inputs and outputs of the dataset), a five-step schematic of one simulation, the checks made so far with their results, the current status and a short glossary. It reuses the room picture from `docs/images/`.
+- **Human decisions / review:** Daniel asked for a very short, simple overview for the course teacher.
