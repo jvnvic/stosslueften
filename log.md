@@ -463,3 +463,19 @@ Template:
 - **AI tool / model:** Claude Code (Claude Opus 5.5)
 - **What the AI did:** The keep-alive task did not run on the simulation PC because its WSL distro is called `Ubuntu`, not `Ubuntu-24.04`. Made the name a parameter of `windows_setup.ps1` (`-Distro`) and updated the guide. Told Daniel the one-line local change as an alternative.
 - **Human decisions / review:** Daniel found that the machine check reported no keep-alive process, and the distro name.
+
+## 2026-10-15 — Night runs: mesh check, fine-mesh B diverged, the two fixes built
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Started the same-wall mesh check (two queues, 4 cores each).
+  - **Fine-mesh method B diverged** at t = 34 s: the time step collapsed to about 1e-93 s. Probably caused by much smaller cells near the sashes (min cell volume 3× smaller) with max Courant 10. All 13 medium-mesh B runs had been stable.
+    - Stopped that run. The fine-mesh turn+tilt case is skipped, because its B stage would most likely do the same.
+    - After the fix checks, fine-mesh B runs again with max Courant 5 on 8 cores (`configs/benchmark/snappy_same_wall_fine_co5.yaml`, reusing the A result), with a watchdog that stops it if the time step collapses.
+  - **Built the two fixes from DATASET_PLAN.md §1** on branch `fix-avg-airflow`, in a separate worktree so the running benchmark keeps its code.
+    - Method A now uses the flow averaged over the second half of the iterations (`fieldAverage`).
+    - The window airflow is now the exact sum of face fluxes over a face zone across each opening: net flow, and inflow = (sum of |phi| + net) / 2.
+    - Short OpenFOAM tests of both stages: inflow equals outflow within 0.1 % (A) and exactly (B). Added 3 tests (133 pass).
+    - Their check runs start automatically after the mesh check.
+  - A watcher script stopped itself by matching its own launching shell's command line (the pgrep -f trap). Rewritten to match exact arguments.
+- **Human decisions / review:** Daniel asked to run the fix checks tonight as well.
