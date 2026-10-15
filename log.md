@@ -429,3 +429,17 @@ Template:
   - Meshed the two fine cases once as a pre-check, without simulating. Both pass `checkMesh` with about 250k cells.
   - Wrote a start script with two queues of 4 cores each (about 4.5 h).
 - **Human decisions / review:** Daniel chose all three runs and asked not to start them yet.
+
+## 2026-10-15 — Simulation PC setup (phase 0) prepared
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Wrote the step-by-step guide `hpc/setup/README.md` for the Windows 11 / WSL2 PC, with the scripts it uses:
+    - the Ubuntu install: packages, OpenFOAM v2606 from openfoam.com, venv, `tracerFoam`, tests;
+    - the Windows script: power options, `.wslconfig`, the WSL keep-alive task;
+    - a machine check with OK/WARN/FAIL lines;
+    - a reference check that runs three laptop cases and compares them (`reference.json`, `compare_reference.py`);
+    - a throughput measurement for 2–4 parallel cases.
+  - Checked beforehand that all pinned Python packages exist for Ubuntu's Python 3.12. Tested the scripts on the laptop as far as possible: OpenFOAM loading, the machine check, and the comparison on the laptop's own results. Added 4 tests.
+  - The "OpenFOAM not loaded" message now names both install paths.
+- **Human decisions / review:** Daniel chose to set up the PC next; he will go through the guide at the machine.

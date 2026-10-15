@@ -1,6 +1,6 @@
 # HPC runner: remote-controlled sweep (plan)
 
-Status: **plan agreed 2026-10-15; nothing is built yet.** The decisions are in §10.
+Status: **plan agreed 2026-10-15.** Phase 0 (machine setup) is prepared in [hpc/setup/](hpc/setup/README.md); the runner itself is not built yet. The decisions are in §10.
 
 ## 1. Goal
 
@@ -173,6 +173,8 @@ runner_ref: main      # runner code version; applied only when paused and idle (
 **Emergency access:** if Windows or WSL itself hangs, git-based control can't help. Daniel then works on the HPC directly. The dashboard's `OFFLINE?` badge and the missing heartbeat show when that is needed.
 
 ## 8. HPC setup (phase 0)
+
+The step-by-step guide with all scripts is [hpc/setup/README.md](hpc/setup/README.md). In short:
 
 1. **Windows:**
    - power plan "never sleep";

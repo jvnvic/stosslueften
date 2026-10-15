@@ -9,13 +9,14 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 - **Current phase: data generation** (the CFD pipeline). The ML part will be planned later.
 - [PLAN.md](PLAN.md) holds the agreed decisions, dataset columns and schedule. **Read it first.**
 - [VENTILATION_CFD_PROJECT.md](VENTILATION_CFD_PROJECT.md) is the original background spec. PLAN.md wins wherever they differ.
-- [HPC_PLAN.md](HPC_PLAN.md) plans the remote sweep runner (Windows/WSL2 PC, control and status through GitHub). It is a proposal; nothing in it is built yet.
+- [HPC_PLAN.md](HPC_PLAN.md) plans the remote sweep runner (Windows/WSL2 PC, control and status through GitHub). Phase 0, the machine setup, is prepared in `hpc/setup/`; the runner itself is not built yet.
 - Status (2026-10-14): the whole single-case pipeline works and is verified (PLAN.md §5–6): snappyHexMesh mesh, steady flow, frozen tracer, metrics, pictures, run queue and live monitor. **Decision M1 (2026-10-15): method B (transient) for same-wall cases, A (steady + tracer) otherwise**; `cfd.run_case` applies it automatically. **Next: the checks before the sweep, then the sweep (input sampling, `cfd.queue`, `results/summary.csv`)**; see PLAN.md §9.
 - Deadline: less than 6 weeks from 2026-10-14.
 
 ## Environment
 
-- CFD runs only on Daniel's Arch Linux PC. It uses a native OpenFOAM v2606 (openfoam.com, AUR `openfoam-com`, no Docker), ParaView, and a Python venv with the Gmsh API.
+- CFD runs on Daniel's Arch Linux PC. It uses a native OpenFOAM v2606 (openfoam.com, AUR `openfoam-com`, no Docker), ParaView, and a Python venv with the Gmsh API.
+- The big sweep will run on a Windows 11 PC with WSL2: Ubuntu 24.04 and the openfoam.com Ubuntu package of v2606 (`/usr/lib/openfoam/openfoam2606`). Its setup is in `hpc/setup/README.md`. Scripts load OpenFOAM through `hpc/setup/foam_env.sh`, which finds either install.
 - Teammates use Windows, macOS or Linux and have little programming experience. They don't run CFD; they work with the CSV results.
 
 ## Rules for AI assistants
@@ -67,6 +68,8 @@ python -m analysis.monitor                                    # live progress wi
 python -m cfd.queue configs/a.yaml configs/b.yaml             # run cases one after another (start detached)
 python -m cfd.queue --transient --procs 4 configs/a.yaml      # option-B comparison runs (steady flow first if missing)
 python -m cfd.queue --resume cases/queues/<name>.json         # continue an interrupted queue
+bash hpc/setup/check_machine.sh                              # simulation PC: readiness check (guide: hpc/setup/README.md)
+python -m hpc.setup.compare_reference                        # simulation PC: reference results vs the laptop
 ```
 
 Not implemented yet (PLAN.md §4): the transient comparison run (benchmark option B) and `python -m sweeps.run_sweep`.
@@ -100,6 +103,7 @@ Not implemented yet (PLAN.md §4): the transient comparison run (benchmark optio
   - Light: `TailTable` reads only newly appended lines and plots are thinned. Each panel is wrapped so that errors cannot stop the window.
 - `cfd/templates/transient/` is the option-B comparison stage: pimpleFoam starting from the steady solution, with a spin-up and then the tracer via the `scalarTransport` function object. The runner uses `mpirun --bind-to none` so that two cases can share the CPU.
 - `analysis/visualize.py` reads a solved case with PyVista. It renders top views at window height (air speed with streamlines, or the tracer), the mesh (cuts coloured by cell size and the surface grid), and plots the replacement curve with matplotlib.
+- `hpc/setup/` prepares the simulation PC (HPC_PLAN.md phase 0): the guide `README.md`, the install and Windows scripts, the machine check, the reference check against the laptop (`reference.json`) and the throughput measurement.
 - `tests/`: pytest.
 - `docs/overview/overview.tex` is a one-page overview for the course (PDF next to it, `latexmk -pdf`). Update it when the status changes significantly.
 - `docs/images/` holds the images used in README.md. Re-render them when the geometry or the examples change.

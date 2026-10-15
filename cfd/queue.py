@@ -71,7 +71,9 @@ def main(argv=None) -> None:
     if bool(args.configs) == bool(args.resume):
         raise SystemExit("give either config files or --resume <queue file>")
     if "WM_PROJECT_DIR" not in os.environ:
-        raise SystemExit("OpenFOAM is not loaded: run `of` (or source /opt/OpenFOAM/OpenFOAM-v2606/etc/bashrc) first")
+        raise SystemExit("OpenFOAM is not loaded: run `of` first, or source its etc/bashrc "
+                         "(Arch AUR: /opt/OpenFOAM/OpenFOAM-v2606/etc/bashrc, "
+                         "Ubuntu package: /usr/lib/openfoam/openfoam2606/etc/bashrc)")
 
     if args.resume:
         path = args.resume

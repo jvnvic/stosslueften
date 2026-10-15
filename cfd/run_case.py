@@ -313,7 +313,9 @@ def main(argv=None) -> None:
     parser.add_argument("--procs", type=int, help="CPU cores for this run (overrides flow.n_procs in the config)")
     args = parser.parse_args(argv)
     if "WM_PROJECT_DIR" not in os.environ:
-        raise SystemExit("OpenFOAM is not loaded: run `of` (or source /opt/OpenFOAM/OpenFOAM-v2606/etc/bashrc) first")
+        raise SystemExit("OpenFOAM is not loaded: run `of` first, or source its etc/bashrc "
+                         "(Arch AUR: /opt/OpenFOAM/OpenFOAM-v2606/etc/bashrc, "
+                         "Ubuntu package: /usr/lib/openfoam/openfoam2606/etc/bashrc)")
     try:
         cfg = load_config(args.config)
         if args.procs:

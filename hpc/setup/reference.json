@@ -1,0 +1,16 @@
+{
+  "about": "Results of the reference cases on the laptop (Intel Core Ultra 7 355, Arch Linux, OpenFOAM v2606 from the AUR), 2026-10-14/15. hpc/setup/compare_reference.py compares the simulation PC's results with them. Tolerances are relative; seconds are for information only (the laptop throttles under load).",
+  "cell_tolerance": 0.001,
+  "checks": [
+    {"case": "default", "config": "configs/default.yaml", "method": "A", "procs": 8,
+     "n_cells": 103242, "t90_s": 76.42, "tau_s": 33.50, "tolerance": 0.01, "laptop_seconds": 299},
+    {"case": "demo_1", "config": "configs/demo/demo_1.yaml", "method": "A", "procs": 8,
+     "n_cells": 105787, "t90_s": 59.56, "tau_s": 28.07, "tolerance": 0.01, "laptop_seconds": 202},
+    {"case": "bench_snappy_same_wall", "config": "configs/benchmark/snappy_same_wall.yaml", "method": "A", "procs": 4,
+     "n_cells": 103010, "t90_s": 581.44, "tau_s": 248.90, "tolerance": 0.03,
+     "note": "the laptop used 8 cores here; this result varies by about 1.5 % with small changes"},
+    {"case": "bench_snappy_same_wall", "config": "configs/benchmark/snappy_same_wall.yaml", "method": "B", "procs": 4,
+     "n_cells": 103010, "t90_s": 442.93, "tau_s": 189.58, "tolerance": 0.05, "laptop_seconds": 3785,
+     "note": "B's own scatter is measured by configs/benchmark/snappy_same_wall_shift_plus1cm.yaml"}
+  ]
+}

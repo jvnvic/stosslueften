@@ -1,0 +1,16 @@
+# WSL settings for the simulation PC (Ryzen 7 8845HS: 8 cores / 16 threads, 32 GB RAM).
+# windows_setup.ps1 copies this file to C:\Users\<you>\.wslconfig.
+# Changes take effect after `wsl --shutdown`. Comments must be on their own lines.
+
+[wsl2]
+# all 16 threads; each case uses 4 of them
+processors=16
+# WSL would take only half of the RAM by default; leave about 8 GB for Windows
+memory=24GB
+swap=8GB
+# never shut the WSL VM down because it looks idle (Windows 11)
+vmIdleTimeout=-1
+
+[general]
+# the same for the Ubuntu instance (newer WSL versions; older ones print a warning and ignore it)
+instanceIdleTimeout=-1

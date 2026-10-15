@@ -80,6 +80,8 @@ Details are in [PLAN.md](PLAN.md).
 
 You only need this on the **Linux machine that runs the simulations**. Teammates who only work with the results (CSV files) don't need to install anything here.
 
+For the Windows PC that will run the big sweep (WSL2 with Ubuntu), follow [hpc/setup/README.md](hpc/setup/README.md) instead.
+
 1. Install OpenFOAM v2606 and ParaView. On Arch Linux, run `yay -S openfoam-com paraview`.
    - **Known build problem (Oct 2026):** the build stops at `viewFactorsGen` with `undefined reference to __gmpz_…`, and the solvers are never built. To fix it:
      1. In `~/.cache/yay/openfoam-com/src/OpenFOAM-v2606/applications/utilities/preProcessing/viewFactorsGen/Make/options`, add the line `$(CGAL_LIBRARIES) \` as the first entry under `EXE_LIBS = \`.
@@ -165,6 +167,7 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 | `docs/overview/` | One-page project overview (LaTeX and PDF) |
 | `docs/demo/` | Pictures of two randomly drawn demo cases (`configs/demo/`): setup, streamlines, mesh |
 | `tests/` | Automated tests |
+| `hpc/` | Remote sweep runner ([HPC_PLAN.md](HPC_PLAN.md)); `hpc/setup/` sets up the simulation PC |
 | `cases/` | Generated simulation folders (not in git) |
 | `results/` | The dataset (planned) |
 
