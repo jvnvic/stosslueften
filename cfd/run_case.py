@@ -3,10 +3,16 @@
 Usage, from the repository root with the venv active and OpenFOAM loaded (`of`):
     python -m cfd.run_case --config configs/default.yaml
     python -m cfd.run_case --config configs/default.yaml --tracer-only   # reuse the flow result
+    python -m cfd.run_case --config configs/demo/demo_2.yaml --steady-only   # quick test, skip stage 3
 
 Stages and folders:
-1. Flow:   mesh + steady simpleFoam in cases/<case_id>/ (deleted and recreated)
-2. Tracer: tracerFoam on the frozen flow in cases/<case_id>/tracer/
+1. Flow:      mesh + steady simpleFoam in cases/<case_id>/ (deleted and recreated)
+2. Tracer:    tracerFoam on the frozen flow in cases/<case_id>/tracer/        (method A)
+3. Transient: pimpleFoam with the tracer in cases/<case_id>/transient/      (method B)
+
+Which method's result goes into the dataset depends on the layout (PLAN.md §5, decision M1):
+B for windows on the same wall, A otherwise. Stage 3 runs automatically for same-wall
+cases (about 40-120 min); `--transient` runs it for any case as a comparison.
 
 Each OpenFOAM tool writes its output to a log.<tool> file in the stage folder.
 The results are saved in cases/<case_id>/summary.json and the curve in
@@ -35,6 +41,15 @@ from geometry.surfaces import write_obstacle_stl
 
 CASES = Path("cases")
 TRACER_SOLVER = Path(__file__).parent / "solvers" / "tracerFoam"
+
+
+def method_for(cfg: CaseConfig) -> str:
+    """The method whose result goes into the dataset (PLAN.md §5, decision M1).
+
+    A (steady flow + frozen tracer) matched B (time-varying flow) within 3 % for windows
+    on different walls, but not for windows on the same wall (−6 to +31 %).
+    """
+    return "B" if cfg.layout == "same_wall" else "A"
 
 
 def _run(cmd: list[str], cwd: Path, log: Path) -> str:
@@ -192,6 +207,18 @@ def prepare_transient(cfg: CaseConfig, case_dir: Path) -> Path:
     return transient_dir
 
 
+def run_transient(cfg: CaseConfig, case_dir: Path, resume: bool = False) -> dict:
+    """Stage 3 (method B), starting from the steady result; returns its summary."""
+    transient_dir = case_dir / "transient"
+    if resume:
+        n_procs, log_name = resume_transient(transient_dir)
+        _run_solver("pimpleFoam", transient_dir, n_procs, [], log_name=log_name, decompose=False)
+    else:
+        prepare_transient(cfg, case_dir)
+        _run_solver("pimpleFoam", transient_dir, cfg.flow.n_procs, [])
+    return transient_summary(cfg, case_dir, transient_dir)
+
+
 def _is_time(folder: Path) -> bool:
     return folder.is_dir() and re.fullmatch(r"[\d.e+-]+", folder.name) is not None
 
@@ -265,6 +292,13 @@ def transient_summary(cfg: CaseConfig, case_dir: Path, transient_dir: Path) -> d
 # --- Command line ----------------------------------------------------------------
 
 
+def _print(summary: dict, width: int = 22) -> None:
+    """Print the main results (only a few points of the curve)."""
+    for key, value in summary.items():
+        if key != "transient" and (not key.startswith("fresh_frac_") or key.endswith(("060s", "120s", "300s", "600s"))):
+            print(f"{key:>{width}}: {value}")
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description="Simulate wind flow and air replacement for one case.")
     parser.add_argument("--config", required=True, type=Path, help="case YAML file, e.g. configs/default.yaml")
@@ -272,6 +306,8 @@ def main(argv=None) -> None:
     stage.add_argument("--tracer-only", action="store_true", help="reuse the existing flow result, rerun the tracer")
     stage.add_argument("--transient", action="store_true",
                        help="comparison run with time-varying flow, starting from the existing flow result (slow)")
+    stage.add_argument("--steady-only", action="store_true",
+                       help="skip the time-varying stage that same-wall cases normally get (quick tests)")
     parser.add_argument("--resume", action="store_true",
                         help="with --transient: continue an interrupted run from its last complete save point")
     parser.add_argument("--procs", type=int, help="CPU cores for this run (overrides flow.n_procs in the config)")
@@ -292,18 +328,9 @@ def main(argv=None) -> None:
         if args.resume and not args.transient:
             raise RuntimeError("--resume only works together with --transient")
         if args.transient:
-            transient_dir = case_dir / "transient"
-            if args.resume:
-                n_procs, log_name = resume_transient(transient_dir)
-                _run_solver("pimpleFoam", transient_dir, n_procs, [], log_name=log_name, decompose=False)
-            else:
-                prepare_transient(cfg, case_dir)
-                _run_solver("pimpleFoam", transient_dir, cfg.flow.n_procs, [])
-            summary["transient"] = transient_summary(cfg, case_dir, transient_dir)
+            summary["transient"] = run_transient(cfg, case_dir, resume=args.resume)
             summary_file.write_text(json.dumps(summary, indent=2))
-            for key, value in summary["transient"].items():
-                if not key.startswith("fresh_frac_") or key.endswith(("060s", "120s", "300s", "600s")):
-                    print(f"{key:>30}: {value}")
+            _print(summary["transient"], width=30)
             return
         if not args.tracer_only:
             started = time.perf_counter()
@@ -319,16 +346,21 @@ def main(argv=None) -> None:
         _run_solver("tracerFoam", tracer_dir, cfg.flow.n_procs, [])
         timings["tracer_seconds"] = time.perf_counter() - started
         summary.update(tracer_summary(cfg, case_dir, tracer_dir))
+        summary.update({k: round(v, 1) for k, v in timings.items()})
+        summary["method"] = method_for(cfg)  # B: the dataset uses summary["transient"]
+        summary_file.write_text(json.dumps(summary, indent=2))  # saved before the long stage 3
+        _print(summary)
+        if summary["method"] == "B" and not (args.tracer_only or args.steady_only):
+            print("Windows on the same wall: running the time-varying flow (method B) ...", flush=True)
+            started = time.perf_counter()
+            summary["transient"] = run_transient(cfg, case_dir)
+            summary["transient_seconds"] = round(time.perf_counter() - started, 1)
+            summary_file.write_text(json.dumps(summary, indent=2))
+            _print(summary["transient"], width=30)
     except ConfigError as error:
         raise SystemExit(f"Invalid configuration: {error}")
     except RuntimeError as error:
         raise SystemExit(f"Case failed: {error}")
-
-    summary.update({k: round(v, 1) for k, v in timings.items()})
-    summary_file.write_text(json.dumps(summary, indent=2))
-    for key, value in summary.items():
-        if not key.startswith("fresh_frac_") or key.endswith(("060s", "120s", "300s", "600s")):
-            print(f"{key:>22}: {value}")
 
 
 if __name__ == "__main__":

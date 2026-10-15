@@ -39,10 +39,12 @@ def write_state(path: Path, state: dict) -> None:
 
 
 def _result(case_id: str, transient: bool) -> float | None:
+    """t90 of the case: of method B for --transient queues and same-wall cases, else of method A."""
     summary = CASES / case_id / "summary.json"
     try:
         summary = json.loads(summary.read_text())
-        return (summary.get("transient", {}) if transient else summary).get("t90_s")
+        use_b = transient or summary.get("method") == "B"
+        return (summary.get("transient", {}) if use_b else summary).get("t90_s")
     except (OSError, ValueError):
         return None
 
@@ -114,10 +116,12 @@ def main(argv=None) -> None:
             continue
         entry["status"], entry["started"] = "running", time.time()
         write_state(path, state)
-        commands = [run_case + ["--config", entry["config"]]]  # steady flow + tracer (method A)
-        if transient:
+        # a normal run: steady flow + tracer, and for same-wall cases also the time-varying stage
+        commands = [run_case + ["--config", entry["config"]]]
+        if transient:  # comparison run: the steady flow first if missing, then the time-varying stage
             has_flow = (CASES / entry["case_id"] / "summary.json").exists()
-            commands = ([] if has_flow else commands) + [run_case + ["--config", entry["config"], "--transient"]]
+            steady = [] if has_flow else [run_case + ["--config", entry["config"], "--steady-only"]]
+            commands = steady + [run_case + ["--config", entry["config"], "--transient"]]
         log = CASES / f"{entry['case_id']}.{'transient.' if transient else ''}queue.log"
         with log.open("w") as out:
             for command in commands:

@@ -366,3 +366,15 @@ Template:
     - demo_2 (same wall, turn 81° / turn 83°, 3.7 m/s): 490 m³/h, t90 540 s.
   - Rendered the room setups and the streamline pictures into `docs/demo/`.
 - **Human decisions / review:** Daniel asked for the demo runs, the pictures and the monitor.
+
+## 2026-10-15 — Decision M1: method by layout, built into the pipeline
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Recorded the team's decision in PLAN.md §5: method B for same-wall cases, A for windows on opposite or adjacent walls.
+  - Updated PLAN.md §3 (new `method` column instead of `solver`), §4 (pipeline steps), §8 (risk table) and §9 (next steps and compute estimate).
+  - Implemented it in `cfd/run_case.py`. `method_for(cfg)` decides the method. A same-wall case runs A and then automatically the transient stage, and `summary.json` records `"method"`. `--steady-only` skips B for quick tests.
+  - Adjusted `cfd.queue` to report B's t90 for those cases and to avoid running B twice in `--transient` queues. Added a test.
+  - Checked the whole path with a shortened same-wall case (5 s spin-up, 30 s tracer) through the queue, then deleted it.
+  - Updated the README, `AGENTS.md` and the status lines of the overview PDF.
+- **Human decisions / review:** Daniel and the team decided on the method by layout (B for the same wall, A otherwise).

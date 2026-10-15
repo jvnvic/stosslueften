@@ -14,7 +14,7 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | Geometry and mesh generator | ✅ |
 | OpenFOAM case: steady wind flow | ✅ first test case runs |
 | Tracer (air replacement) and metrics | ✅ runs on the frozen steady flow |
-| Solver benchmark: comparison with a fully transient run | ⚠️ 12 cases compared; method choice to be decided (see below) |
+| Solver benchmark: comparison with a fully transient run | ✅ decided: fast method for windows on different walls, exact method for the same wall (see below) |
 | Mesh study | ✅ snappyHexMesh, medium cell sizes (see PLAN.md §6) |
 | Parameter sweep, dataset | planned |
 
@@ -57,7 +57,7 @@ We ran both methods on 12 cases: every window layout, turned and tilted windows,
 - **Wind speed:** the results scale exactly with wind speed. At 1 m/s, the air is replaced 3× slower than at 3 m/s.
 - **Cost:** method B takes about 40 min per case, method A about 5 min.
 
-The team still has to decide. Our recommendation is method A for windows on different walls and method B for the same wall, which takes about 2 days of compute for the sweep. Details are in [PLAN.md §5](PLAN.md).
+**Decision:** the dataset uses method A for windows on different walls and method B for windows on the same wall. The sweep then takes about 2 days of compute. `cfd.run_case` picks the method automatically. Details are in [PLAN.md §5](PLAN.md).
 
 ## What is simulated
 
@@ -99,7 +99,8 @@ You only need this on the **Linux machine that runs the simulations**. Teammates
 ```bash
 python -m geometry.generate --config configs/default.yaml                     # build + mesh -> cases/default/mesh.msh
 python -m geometry.render configs/default.yaml --out docs/images/default.png  # picture of the room setup
-python -m cfd.run_case --config configs/default.yaml                          # wind + air replacement (needs OpenFOAM, ~6 min)
+python -m cfd.run_case --config configs/default.yaml                          # wind + air replacement (needs OpenFOAM, ~4 min)
+python -m cfd.run_case --config configs/demo/demo_2.yaml --steady-only        # same-wall case without the slow method B (quick test)
 python -m cfd.run_case --config configs/default.yaml --tracer-only            # rerun only the air replacement
 python -m analysis.visualize --config configs/default.yaml --kind flow --out flow.png   # also: --kind tracer, --kind curve
 python -m analysis.compare_methods configs/comparison/*.yaml --out comparison.png      # method A vs B table and curves
@@ -133,6 +134,7 @@ An interrupted transient comparison run can be continued from its last save poin
 `cfd.run_case` writes everything to `cases/<case_id>/`:
 - `summary.json`: the key numbers.
 - `fresh_fraction.csv`: the air-replacement curve, one value per second.
+- For same-wall cases also `transient/` and `fresh_fraction_transient.csv` (method B, about 40–120 min). `summary.json` says which method counts for the dataset (`"method"`).
 - A `log.<tool>` file for each OpenFOAM tool's output.
 
 The first run automatically compiles our own OpenFOAM solver `tracerFoam` (`cfd/solvers/`).

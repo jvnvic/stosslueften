@@ -9,7 +9,7 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 - **Current phase: data generation** (the CFD pipeline). The ML part will be planned later.
 - [PLAN.md](PLAN.md) holds the agreed decisions, dataset columns and schedule. **Read it first.**
 - [VENTILATION_CFD_PROJECT.md](VENTILATION_CFD_PROJECT.md) is the original background spec. PLAN.md wins wherever they differ.
-- Status (2026-10-14): the whole single-case pipeline works and is verified (PLAN.md §5–6): snappyHexMesh mesh, steady flow, frozen tracer, metrics, pictures, run queue and live monitor. Method A vs B was compared on 12 cases (PLAN.md §5): A matches B for windows on different walls, not for the same wall. **Next: the team decides M1 (recommendation in PLAN.md §5), then the sweep (input sampling, `cfd.queue`, `results/summary.csv`)**; see PLAN.md §9.
+- Status (2026-10-14): the whole single-case pipeline works and is verified (PLAN.md §5–6): snappyHexMesh mesh, steady flow, frozen tracer, metrics, pictures, run queue and live monitor. **Decision M1 (2026-10-15): method B (transient) for same-wall cases, A (steady + tracer) otherwise**; `cfd.run_case` applies it automatically. **Next: the checks before the sweep, then the sweep (input sampling, `cfd.queue`, `results/summary.csv`)**; see PLAN.md §9.
 - Deadline: less than 6 weeks from 2026-10-14.
 
 ## Environment
@@ -57,6 +57,7 @@ python -m geometry.generate --config configs/default.yaml --no-mesh --gui   # Gm
 python -m geometry.render configs/examples/*.yaml --out docs/images/layouts.png   # README picture
 python -m cfd.run_case --config configs/default.yaml          # mesh + steady flow + tracer -> cases/default/ (needs OpenFOAM)
 python -m cfd.run_case --config configs/default.yaml --tracer-only   # rerun the tracer on the existing flow
+python -m cfd.run_case --config configs/demo/demo_2.yaml --steady-only   # same-wall case without method B (quick test)
 python -m analysis.visualize --config configs/default.yaml --kind flow|tracer|curve --out <png>
 python -m cfd.run_case --config configs/benchmark/same_wall.yaml --transient --procs 4   # option B comparison run (hours)
 python -m cfd.run_case --config configs/benchmark/same_wall.yaml --transient --resume   # continue it after an interruption
@@ -88,7 +89,9 @@ Not implemented yet (PLAN.md §4): the transient comparison run (benchmark optio
 - `analysis/compare_methods.py` prints a table and draws the air-replacement curves of method A vs B for cases that have both results.
 - `analysis/metrics.py` computes `fresh_frac_XXXs`, `t90_s` and `tau_s` (PLAN.md §3) from the room-average tracer.
 - The boundary conditions follow the OpenFOAM v2606 validation case `atmDownstreamDevelopment`: a log-law wind profile at the inlet, k-ω SST turbulence, rough ground via `atmNutkWallFunction`, and a fixed shear stress at the top.
-- `cfd/run_case.py` runs the chain: Gmsh mesh, `gmshToFoam`, patch types, `topoSet` (cellZone `room`), `renumberMesh`, `checkMesh`, then `simpleFoam` in parallel. It writes `summary.json`.
+- `cfd/run_case.py` runs the chain: mesh (snappyHexMesh by default), `topoSet` (cellZone `room`), `renumberMesh`, `checkMesh`, `simpleFoam` in parallel, then the tracer.
+  - `method_for(cfg)` implements decision M1: same-wall cases also run the transient stage (method B).
+  - It writes `summary.json` with `"method"`; the B results are under `"transient"`.
 - `cfd/queue.py` runs cases sequentially via `cfd.run_case`. It writes `cases/queues/<start>.json` atomically (status per entry: pending/running/done/failed, duration, t90). `--transient` queues option-B comparison runs. `--resume` continues after an interruption. Several queues can run side by side (e.g. with `--procs 4`).
 - `analysis/monitor.py` is a live matplotlib/Tk window, dark theme, sized to the right half of a 16:9 screen.
   - Data: running solvers and mesh tools from psutil (one row each, up to 4), per-core load in a compact grid for any core count, and the queue files.

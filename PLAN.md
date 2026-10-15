@@ -46,7 +46,8 @@ Agreed 2026-10-14. Deadline: less than 6 weeks away; the exact date is still to 
 | `t90_s` | First time fresh_fraction ≥ 0.9. **Left empty** if never reached. |
 | `tau_s` | Time constant τ from fitting fresh_fraction ≈ 1 − exp(−t/τ). Always defined. |
 | `airflow_m3h` | Mean volumetric inflow through both window openings (inflow equals outflow) |
-| `n_cells`, `solver`, `runtime_s`, `git_commit` | Reproducibility information |
+| `method` | `A` (steady flow + tracer) or `B` (time-varying flow). B for same-wall cases, A otherwise (§5, decision M1). |
+| `n_cells`, `runtime_s`, `git_commit` | Reproducibility information |
 
 `results/timeseries/<case_id>.csv` holds `time_s, fresh_fraction` every 1 s. Logs and configs stay in `cases/<case_id>/`, which is not committed.
 
@@ -55,19 +56,19 @@ Agreed 2026-10-14. Deadline: less than 6 weeks away; the exact date is still to 
 Each case goes through these steps:
 
 1. YAML config.
-2. Geometry and mesh with the Gmsh Python API.
-3. `gmshToFoam` conversion, then `checkMesh`.
-4. Flow solver.
-5. Tracer.
+2. Geometry with the Gmsh Python API, exported as STL; mesh with `snappyHexMesh`, then `checkMesh` (§6).
+3. Steady flow (`simpleFoam`).
+4. Tracer on the frozen steady flow (`tracerFoam`): method A.
+5. Same-wall cases only: time-varying flow with the tracer (`pimpleFoam`): method B (§5, decision M1).
 6. Metrics, then one row appended to `summary.csv`.
 
 Commands:
-- `python -m cfd.run_case --config <file>` runs one case.
-- `python -m sweeps.run_sweep --config <file>` runs a sampled set. It skips finished cases, records failures and continues.
+- `python -m cfd.run_case --config <file>` runs one case (steps 2–5).
+- `python -m cfd.queue <files>` runs many cases one after another, with a status file for the monitor and `--resume` after interruptions.
+- Sampling the sweep inputs and writing `summary.csv` are still to be built (§9).
 
 Implementation notes:
-- The room is a cellZone, because `gmshToFoam` maps Gmsh physical volumes to cellZones.
-- Window flux needs faceZones built with `topoSet`, because `gmshToFoam` creates none.
+- The room is a cellZone made by `topoSet`.
 - The pipeline assumes Linux with OpenFOAM v2606 sourced, and fails with a clear message otherwise.
 
 ## 5. Solver benchmark (week 1, decides the approach)
@@ -102,7 +103,7 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 - **Empirical cross-check for same wall:** single-sided formulas (de Gids & Phaff 1982; Warren & Parkins 1985) give τ ≈ 210–250 s for single-sided exchange alone, plus the through-flow between the windows. Both methods are plausible.
 - **Caveat:** URANS cannot capture turbulent "pumping" at openings either (that needs LES). The comparison tests unsteady mean-flow effects, not small-scale turbulence.
 
-**Decision M1: option A (steady flow + frozen tracer) for the sweep.** It is 25–30× cheaper, and the difference to B (6–12 %) is reported as a known systematic uncertainty of the dataset.
+**Decision M1 (first version, superseded on 2026-10-15, see the end of this section): option A (steady flow + frozen tracer) for the sweep.** It is 25–30× cheaper, and the difference to B (6–12 %) is reported as a known systematic uncertainty of the dataset.
 
 **Repeat on the snappyHexMesh mesh (2026-10-14).** The same two cases and settings as above, on the medium snappy mesh (103k cells, §6). The B runs ran side by side with 4 cores each.
 
@@ -121,7 +122,7 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 - **On the tetrahedral mesh, the same-wall difference had the opposite sign** (A 12 % faster), because that steady solution had a through-flow of 785 m³/h. In weak-flow cases, the steady result depends on which of several steady states the solver ends up in. Those cases carry the largest uncertainty of method A.
 - **Cost of B on this mesh:** two runs side by side each advance about 0.14 simulated s per second. A full case (60 s spin-up and 600 s tracer) takes about 80 min on 4 cores, which is about 40 min per case at two cases at a time. 180 cases would take about 5 days of continuous compute, versus about 15 h for A.
 
-**Decision M1 is under review (team decision).** The decision rule above (B only at ≤ 30 min per case) still points to A, but A's error for the same-wall case is about 24 %. The overnight comparison below tested how far this goes.
+**Decision M1 was reopened.** The decision rule above (B only at ≤ 30 min per case) still points to A, but A's error for the same-wall case is about 24 %. The overnight comparison below tested how far this goes.
 
 **Overnight comparison (2026-10-15).** A vs B on 10 more cases (`configs/comparison/`), covering every layout and window-mode combination, wind at 1 and 5 m/s, and a coarse-mesh check of B. Together with the two cases above, that makes 12. The table and figure come from `python -m analysis.compare_methods` ([docs/images/method_comparison.png](docs/images/method_comparison.png)).
 
@@ -157,9 +158,13 @@ Findings:
 7. **Cost of B:** 30–120 min per case on 4 cores, with two cases running side by side. 5 m/s and fast cross-ventilation need smaller time steps (Courant limit). The night's 10 cases took 6.3 h, so about 38 min per case.
 8. **Mesh fix:** one case failed `checkMesh` (2 sash faces with skewness 4.1). snappyHexMesh now uses checkMesh's limit (4) at walls. The default mesh is byte-identical.
 
-**Recommendation for decision M1 (to be decided by the team):**
-- **Method by layout:** A for windows on different walls (validated by 7 of 7 cases), B for same-wall cases. The `solver` column (§3) records which one was used. The labels are then B quality everywhere, at about 40 % of B's cost: 120 × 5 min + 60 × ~40 min ≈ 2 days of compute instead of about 5.
-- **Before the sweep:**
+**Decision M1 (team, 2026-10-15): method by layout.**
+- **B for windows on the same wall, A for windows on opposite or adjacent walls** (A was validated by 7 of 7 cases there).
+- The `method` column (§3) records which one was used.
+- The labels are then B quality everywhere, at about 40 % of B's cost: 120 × ~4 min + 60 × ~40 min ≈ 2 days of compute instead of about 5.
+- `cfd.run_case` applies this automatically (`method_for`): a same-wall case runs A and then B, and `summary.json` records the method.
+
+**Proposed follow-ups before the sweep (open):**
   - a fine-mesh check of a same-wall case (A and B, about 3–4 h, one night), because of finding 3;
   - A: run the tracer on the flow averaged over the last ~1000 iterations, not the last iteration (finding 5);
   - `airflow_m3h`: measure the inflow on the exact face fluxes of the openings, not the interpolated plane (finding 6).
@@ -224,19 +229,27 @@ Findings:
 | Runs are too slow | Coarser mesh, smaller domain, option A, or fewer runs (at least about 100) |
 | The thin tilt gap needs fine cells | Refine the mesh only around the windows |
 | The Gmsh tetrahedral mesh is poor or slow for RANS | Switch to `snappyHexMesh`, with the geometry exported as STL from Python |
-| Steady RANS underestimates single-sided (`same_wall`) exchange | Document it as a limitation |
+| Steady RANS gets single-sided (`same_wall`) exchange wrong (−6 to +31 %, §5) | Method B for same-wall cases (decision M1); check B's mesh dependence for these cases before the sweep |
 
-## 9. Still open / next steps (state 2026-10-14, end of day 1)
+## 9. Still open / next steps (state 2026-10-15)
 
-**Done:** the mesh decision (snappyHexMesh medium), about 5 min per case and 64 MB on disk per case. The solver benchmark was repeated on this mesh and extended to 12 cases (§5, 2026-10-15).
+**Done:**
+- The mesh decision: snappyHexMesh medium, about 5 min per case and 64 MB on disk per case.
+- **Decision M1 (2026-10-15):** B for same-wall cases, A otherwise (§5). It is built into `cfd.run_case`.
 
 Next, in this order:
-1. **Decide M1 (§5, recommendation there):** method by layout (A for windows on different walls, B for the same wall), plus whether wind speed is sampled or obtained by scaling. Then the follow-ups from §5:
-   - a fine-mesh check of a same-wall case;
+1. **Before the sweep** (proposed in §5):
+   - a fine-mesh check of a same-wall case with B (one night);
    - A on the iteration-averaged flow;
    - `airflow_m3h` from exact face fluxes.
+
+   Team decision: is wind speed sampled, or obtained by scaling?
 2. **Sweep generator.** Latin hypercube sampling of the inputs (§2), writing one YAML per case (e.g. `configs/sweep/`). Train set of about 150 and a separate test set of about 30; invalid samples are redrawn and logged.
-3. **Dataset writer:** `results/summary.csv` with the columns of §3, plus `results/timeseries/<case_id>.csv`. Freeze the columns (M2). Still missing from §3: the inputs as columns, `status`/`error_message`, `git_commit`.
+3. **Dataset writer:** `results/summary.csv` with the columns of §3, plus `results/timeseries/<case_id>.csv`. Freeze the columns (M2).
+   - For method B cases it takes the results from `summary.json["transient"]`.
+   - Still missing from §3: the inputs as columns, `status`/`error_message`, `git_commit`.
 4. **Run the sweep with `cfd.queue`** (detached; `--resume` after interruptions) and watch it with `analysis.monitor`.
+   - About 2 days of compute: 120 × ~4 min (A) + 60 × ~40 min (B, two queues with 4 cores each).
+   - An interrupted B case restarts from its beginning in the queue.
 5. **Open decisions:** sample the hinge side or keep it fixed; tracer Δt 0.2 s or 0.5 s for the sweep (0.6 % difference, §5).
 6. **Still undecided:** exact deadline and deliverables, and the task split in the team. CFD runs only on Daniel's PC, so teammates could take visualizations, literature and documentation.
