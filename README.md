@@ -176,6 +176,7 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 - [docs/overview/overview.pdf](docs/overview/overview.pdf): one-page overview of the project for readers without CFD background (source: `overview.tex`, build with `latexmk -pdf`).
 - [PLAN.md](PLAN.md): agreed decisions, dataset columns and schedule.
 - [HPC_PLAN.md](HPC_PLAN.md): plan for running the sweep on a remote Windows/WSL2 PC, controlled through GitHub, with a status dashboard.
+- [DATASET_PLAN.md](DATASET_PLAN.md): plan for the sweep generator (random input combinations) and the dataset writer (the CSV).
 - [VENTILATION_CFD_PROJECT.md](VENTILATION_CFD_PROJECT.md): the original project specification.
 - [log.md](log.md): how AI tools were used in each step (a course requirement).
 - [AGENTS.md](AGENTS.md): instructions for AI coding assistants working in this repository.

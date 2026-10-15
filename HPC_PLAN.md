@@ -256,3 +256,66 @@ Until then, phases 0–4 use the existing configs in `configs/comparison/` and `
 5. **Notifications:** yes, through GitHub issues (§5).
 6. **A second runner on the laptop:** not in the first version.
 7. **Order:** the sweep generator and dataset writer are built later, once the remaining benchmarks are done.
+
+## 11. Implementation details (phases 1–4)
+
+**Modules** in `hpc/`, each testable on its own:
+
+| Module | Job |
+|---|---|
+| `runner.py` | The 60 s loop and the command line (`python -m hpc.runner`, `--fake` for tests) |
+| `state.py` | `~/hpc/state.json`: cases with status, attempts, PID and process start time. Atomic writes; allowed status changes only. |
+| `control.py` | Reads and validates `hpc/control.yaml` and `hpc/runs/*.yaml` from `origin/main` (`git show`) |
+| `jobs.py` | Starts, watches, kills and re-adopts case processes; decides between rerun and resume |
+| `results.py` | After a case: copies summary, config and curves; two JPEG pictures (setup, streamlines; ~80 KB each) |
+| `status.py` | Builds `status.json`, using the progress readers of `analysis.monitor` |
+| `gitsync.py` | `fetch`, `show`, and pushes to `hpc-status` (one commit, amended and force-pushed) and `hpc-results` (appended). Retries after 1, 2, 5, 10 min; never waits on GitHub. |
+| `notify.py` | One issue per run, comments batched (§5), plain `urllib` and the token file |
+| `site/` | `index.html`, `app.js`, `style.css` (no framework), `sample_status.json` for testing |
+| `setup/` | phase 0, plus `stosslueften-runner.service` and the Pages workflow |
+
+**Cases**
+- Each case starts as `python -m cfd.run_case --config … --procs 4` with `start_new_session=True` (its own process group, so a stop kills OpenFOAM's MPI processes too). Its output goes to `cases/<case>.runner.log`.
+- **Order:** same-wall (B) cases first, then A cases. A run's cases use all slots; runs follow each other in the order given in `control.yaml`.
+- **Restart rules:**
+  - A case interrupted during the A stage runs again from the start.
+  - A same-wall case interrupted during B, with `summary.json` present and `transient/processor*` folders, continues with `--transient --resume`.
+- **Adopting after a runner restart:** a case whose PID still runs with the recorded start time is watched again by its files: `summary.json` with the `"transient"` part for B, and the log. If the process is gone and the result is incomplete, the case fails or goes back to waiting.
+- **Timeouts:** A 45 min, B 5 h. Then the case is killed, retried once, and after that fails.
+
+**Code versions**
+- **Pinned per run:** a run's cases use a git worktree of its pinned commit, `~/hpc/code/<sha>`.
+- **Shared folders:** the cases folder is the same for all versions. `run_case`, `queue` and `monitor` will read it from the environment variable `STOSSLUEFTEN_CASES` (default `cases`). That is a small change to the existing code.
+- **Shared venv:** if `requirements.txt` of a new run differs, the runner does not start the run, and says so on the dashboard.
+- **Our solver:** `tracerFoam` is rebuilt with `wmake` when a run starts (fast if unchanged). Only one code version runs at a time.
+
+**Service:** `systemd` unit with `Restart=always` and **`KillMode=process`**, so that a runner restart does not kill the running cases. The unit starts a small wrapper that loads OpenFOAM (`hpc/setup/foam_env.sh`) and then the runner.
+
+**`status.json` (version 1):**
+- `schema`, `updated_utc`;
+- `runner`: state, host, code commit, message;
+- `machine`: load per thread, RAM, disk;
+- `runs`: per run the counts, cases per hour, finish estimate;
+- `running`: per slot the case, layout, method, stage, progress, elapsed time, and the last 200 residual values (thinned);
+- `finished`: the last 30;
+- `failures`: with log tails;
+- `events`: the last 50;
+- `latest`: case id and the two picture names.
+
+**Testing before the pilot**
+1. **Unit tests:**
+   - status changes;
+   - control file checks: a wrong value is rejected with a clear message;
+   - the case order;
+   - the finish estimate;
+   - `status.json` fields;
+   - result packaging;
+   - notification batching (with a fake sender).
+2. **Fake cases:** `hpc/fake_case.py` has the same command line and output files as `run_case`. It takes seconds, can be set to fail or hang, and writes a fake log. The whole loop then runs in minutes:
+   - pause, stop, retry, skip;
+   - timeouts;
+   - killing the runner (adopting);
+   - killing everything at once, as in a reboot (rerun or resume).
+3. **Git without GitHub:** a local bare repository in a temp folder stands in for GitHub: control on `main`, status and results branches, a push failing and recovering.
+4. **Dashboard:** open `site/index.html` with `sample_status.json`. Check states, old data (`OFFLINE?`), many failures, and phone width.
+5. **Then phase 4 (pilot) on the simulation PC** with real cases.

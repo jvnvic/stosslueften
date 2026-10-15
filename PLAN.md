@@ -249,7 +249,7 @@ Next, in this order:
    - `airflow_m3h` from exact face fluxes.
 
    Team decision: is wind speed sampled, or obtained by scaling?
-2. **Sweep generator.** Latin hypercube sampling of the inputs (§2), writing one YAML per case (e.g. `configs/sweep/`). Train set of about 150 and a separate test set of about 30; invalid samples are redrawn and logged.
+2. **Sweep generator.** Planned in [DATASET_PLAN.md](DATASET_PLAN.md) §2: a Latin hypercube per layout, a spec file per run, and redraws of invalid positions. Train set of about 150 and a separate test set of about 30.
 3. **Dataset writer:** `results/summary.csv` with the columns of §3, plus `results/timeseries/<case_id>.csv`. Freeze the columns (M2).
    - For method B cases it takes the results from `summary.json["transient"]`.
    - Still missing from §3: the inputs as columns, `status`/`error_message`, `git_commit`.
