@@ -398,3 +398,12 @@ Template:
 - **AI tool / model:** Claude Code (Claude Opus 5.5)
 - **What the AI did:** Added a short, plain-language explanation of the tracer to the README's air-replacement section. It uses an ink analogy in four steps (start, opening, time steps, measuring) and says why the tracer can be computed after the wind for method A.
 - **Human decisions / review:** Daniel asked for a very simple explanation.
+
+## 2026-10-15 — Plan for a remote-controlled HPC runner
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Wrote `HPC_PLAN.md`: a runner on a Windows/WSL2 PC that takes run configs and a declarative control file from `main`. It runs cases in parallel slots, recovers from crashes and reboots, and publishes status to a force-pushed `hpc-status` branch shown on GitHub Pages. Results go to an `hpc-results` branch.
+  - The plan also covers the dashboard layout and look, a failure table, the machine setup with a reference check against the laptop, build phases and open decisions.
+  - Checked that the repo is now public, so Pages and Actions are free; noted in the plan that the dashboard is therefore public.
+- **Human decisions / review:** Daniel described the goal: a dedicated simulation PC, job control and status on GitHub, monitor-like statistics plus pictures, robust and fully remote. The open decisions in §10 are his.

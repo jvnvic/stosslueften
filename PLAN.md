@@ -248,7 +248,7 @@ Next, in this order:
 3. **Dataset writer:** `results/summary.csv` with the columns of §3, plus `results/timeseries/<case_id>.csv`. Freeze the columns (M2).
    - For method B cases it takes the results from `summary.json["transient"]`.
    - Still missing from §3: the inputs as columns, `status`/`error_message`, `git_commit`.
-4. **Run the sweep with `cfd.queue`** (detached; `--resume` after interruptions) and watch it with `analysis.monitor`.
+4. **Run the sweep** on a separate Windows/WSL2 PC, controlled remotely through GitHub with a status dashboard on GitHub Pages ([HPC_PLAN.md](HPC_PLAN.md), proposal). Fallback: `cfd.queue` on this laptop, watched with `analysis.monitor`.
    - About 2 days of compute: 120 × ~4 min (A) + 60 × ~40 min (B, two queues with 4 cores each).
    - An interrupted B case restarts from its beginning in the queue.
 5. **Open decisions:** sample the hinge side or keep it fixed; tracer Δt 0.2 s or 0.5 s for the sweep (0.6 % difference, §5).
