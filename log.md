@@ -355,3 +355,14 @@ Template:
 - **AI tool / model:** Claude Code (Claude Opus 5.5)
 - **What the AI did:** Replaced the web page from the previous entry with a plain one-page LaTeX document, `docs/overview/overview.tex` and `.pdf`. It has the same content (goal, inputs and outputs, five-step process diagram, checks table, status) plus the streamline picture of the default case.
 - **Human decisions / review:** Daniel preferred a plain LaTeX page to a styled web page, and asked for the streamline picture to be included.
+
+## 2026-10-15 — Two random demo cases
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Drew two random room setups within the sweep ranges (PLAN.md §2, seed 20261015), checked them for window overlap and collisions, and saved them as `configs/demo/demo_1.yaml` and `demo_2.yaml`.
+  - Ran both with method A through `cfd.queue`, with the monitor open. Each took about 3.5 min.
+    - demo_1 (adjacent walls, turn 59° / turn 15°, 4.5 m/s): 4,530 m³/h, t90 60 s.
+    - demo_2 (same wall, turn 81° / turn 83°, 3.7 m/s): 490 m³/h, t90 540 s.
+  - Rendered the room setups and the streamline pictures into `docs/demo/`.
+- **Human decisions / review:** Daniel asked for the demo runs, the pictures and the monitor.

@@ -155,6 +155,7 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 | `geometry/` | Window placement, the Gmsh geometry and mesh generator, and the 3D renders |
 | `docs/images/` | Pictures used in this README |
 | `docs/overview/` | One-page project overview (LaTeX and PDF) |
+| `docs/demo/` | Pictures of two randomly drawn demo cases (`configs/demo/`) |
 | `tests/` | Automated tests |
 | `cases/` | Generated simulation folders (not in git) |
 | `results/` | The dataset (planned) |
