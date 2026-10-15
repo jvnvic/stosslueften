@@ -326,3 +326,20 @@ Template:
     - Queued the case again; it starts when comparison queue 2 has finished.
   - Found that method A depends on where the steady solver stops, in cases whose flow keeps swinging over the iterations. The same adjacent-walls case gave t90 88.4 s on 8 cores and 94.0 s on 4 cores, with an identical mean flow over the last 1000 iterations. Wrote this into PLAN.md §5 with a proposed fix (run the tracer on the iteration-averaged flow), to be decided by the team.
 - **Human decisions / review:** none yet; to be reviewed by Daniel in the morning.
+
+## 2026-10-15 — Analysis of the overnight comparison (method A vs B)
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Collected A and B results for all 12 comparison cases. Wrote `analysis/compare_methods.py` (table and curve figure, with tests) and added the figure to the README.
+  - Main findings (details in PLAN.md §5):
+    - A matches B within 3 % for windows on different walls (7 of 7 cases), but not for the same wall (−6 to +31 %).
+    - Same-wall results also depend on the mesh (11–17 %).
+    - τ scales exactly with 1/wind speed (within 3 %).
+    - The window-flow measurement is unsuitable for the planned `airflow_m3h` column.
+  - Recommended for the team's decision M1: method by layout (A for different walls, B for the same wall, about 2 days of compute), plus three follow-ups before the sweep:
+    - a fine-mesh check of a same-wall case;
+    - the tracer on the iteration-averaged flow;
+    - airflow from exact face fluxes.
+  - Also proposed dropping wind speed from the sampled inputs, because results scale with it.
+- **Human decisions / review:** Daniel asked for the analysis. M1 and the wind-speed question are left to the team.

@@ -121,19 +121,49 @@ Run two options on one coarse `opposite_walls` case and one coarse `same_wall` c
 - **On the tetrahedral mesh, the same-wall difference had the opposite sign** (A 12 % faster), because that steady solution had a through-flow of 785 m³/h. In weak-flow cases, the steady result depends on which of several steady states the solver ends up in. Those cases carry the largest uncertainty of method A.
 - **Cost of B on this mesh:** two runs side by side each advance about 0.14 simulated s per second. A full case (60 s spin-up and 600 s tracer) takes about 80 min on 4 cores, which is about 40 min per case at two cases at a time. 180 cases would take about 5 days of continuous compute, versus about 15 h for A.
 
-**Decision M1 is under review (team decision).** The decision rule above (B only at ≤ 30 min per case) still points to A. But A's error for weak-flow cases (same wall; probably also tilted windows) is now about 24 %, and those cases make up a large part of the sweep. Options:
-1. Keep A for all cases. Report ±4 % for cross-ventilation and up to −24 % (A too slow) for single-sided cases.
-2. Use B for all cases: about 5 days of compute. B would first need its own short mesh check.
-3. First compare A and B on one or two cases with a tilted window (about 1–1.5 h), then choose between 1 and 2.
+**Decision M1 is under review (team decision).** The decision rule above (B only at ≤ 30 min per case) still points to A, but A's error for the same-wall case is about 24 %. The overnight comparison below tested how far this goes.
 
-**Overnight comparison (started 2026-10-15 00:00, configs in `configs/comparison/`).** A vs B for every layout and window-mode combination, at 1 and 5 m/s wind, and a coarse-mesh check of B. The results go here when it has finished. Findings so far:
-- **A's same-wall result is robust.** With window 1 moved by ±1 cm or with cells 3 % smaller, A gives t90 564–581 s, τ 242–249 s, and through-flow ≈ 0 every time. A's 24 % gap to B is systematic, not chance.
-- **A depends on where the steady solver stops, in cases that never fully settle.** Adjacent walls (turn 60° / turn 30°), identical mesh, run on 8 vs 4 cores:
-  - window flow 4,444 vs 4,345 m³/h, and t90 88.4 vs 94.0 s (6 %);
-  - the window flow keeps swinging by ±1.3 % over the iterations, and the mean over iterations 1000–2000 is identical (4,406 vs 4,407 m³/h);
-  - the default case barely swings (±0.2 %).
-  - **Proposal if A is kept:** run the tracer on the flow averaged over the last ~1000 iterations (`fieldAverage` of U, phi and nut) instead of the last iteration.
-- **Mesh fix:** one case failed `checkMesh` because of 2 sash faces with skewness 4.1. snappyHexMesh now uses the same limit as checkMesh (4) at walls. The default mesh is byte-identical, so earlier results stay valid.
+**Overnight comparison (2026-10-15).** A vs B on 10 more cases (`configs/comparison/`), covering every layout and window-mode combination, wind at 1 and 5 m/s, and a coarse-mesh check of B. Together with the two cases above, that makes 12. The table and figure come from `python -m analysis.compare_methods` ([docs/images/method_comparison.png](docs/images/method_comparison.png)).
+
+| Case | τ A | τ B | A vs B | t90 A | t90 B | largest curve gap |
+|---|---|---|---|---|---|---|
+| opposite walls, turn 90 / turn 90, 3 m/s | 34 s | 33 s | +3 % | 77 s | 74 s | 1.2 % points |
+| opposite walls, turn 45 / tilt 6, 3 m/s | 134 s | 133 s | +0 % | 300 s | 302 s | 0.7 |
+| opposite walls, tilt 6 / tilt 6, 3 m/s | 188 s | 185 s | +2 % | 430 s | 425 s | 0.9 |
+| opposite walls, turn 90 / turn 90, 1 m/s | 100 s | 99 s | +1 % | 229 s | 226 s | 0.4 |
+| adjacent walls, turn 60 / turn 30, 3 m/s | 39 s | 38 s | +2 % | 94 s | 93 s | 1.0 |
+| adjacent walls, turn 60 / tilt 6, 3 m/s | 132 s | 132 s | 0 % | 311 s | 309 s | 0.7 |
+| adjacent walls, tilt 6 / tilt 6, 3 m/s | 182 s | 182 s | 0 % | 418 s | 417 s | 0.2 |
+| same wall, turn 90 / turn 90, 3 m/s | 249 s | 190 s | **+31 %** | 581 s | 443 s | 9.9 |
+| same wall, turn 45 / tilt 6, 3 m/s | 546 s | 581 s | **−6 %** | – | – | 3.8 |
+| same wall, tilt 6 / tilt 6, 3 m/s | 1448 s | 1219 s | **+19 %** | – | – | 4.7 |
+| same wall, turn 90 / turn 90, 5 m/s | 147 s | 117 s | **+26 %** | 342 s | 274 s | 8.9 |
+| same wall, turn 90 / turn 90, 3 m/s, coarse mesh | 207 s | 211 s | −2 % | 479 s | 492 s | 0.9 |
+
+(– = 90 % not reached within 600 s. "Largest curve gap" is the largest difference between the two curves, in percentage points of air replaced.)
+
+Findings:
+1. **Windows on different walls (cross-ventilation): A matches B.** In all 7 cases, τ agrees within 3 % and the curves within about 1 percentage point. This includes tilted windows, slow air exchange (τ up to 188 s) and 1 m/s wind.
+2. **Windows on the same wall (single-sided): A does not match B.** τ differs by −6 to +31 %, with no consistent direction, so a correction factor is not possible. In B, the flow at the windows fluctuates strongly. That moves air in and out in a way the steady flow cannot represent.
+3. **Same-wall results also depend on the mesh**, unlike the cross-ventilation default case (±2.5 %, §6). Coarse vs medium mesh gives τ −17 % for A and +11 % for B. The coarse-mesh agreement of A and B (−2 %) is a coincidence: A and B move in opposite directions.
+4. **τ scales exactly with 1/wind speed.** τ·U changes by only −0.3 % (A) and +1.6 % (B) between 1 and 3 m/s (opposite walls), and by −1.7 % (A) and +2.7 % (B) between 3 and 5 m/s (same wall). So the results are independent of the Reynolds number (§6). A case at another wind speed is the same curve stretched in time by 3/U.
+5. **A is robust to tiny changes, but depends on where the steady solver stops.**
+   - Same wall: moving window 1 by ±1 cm or making the cells 3 % smaller gives τ 242–249 s.
+   - Adjacent walls (turn 60 / turn 30), identical mesh, 8 vs 4 cores: t90 88.4 vs 94.0 s. The window flow keeps swinging by ±1.3 % over the iterations, and its mean over iterations 1000–2000 is identical in both runs.
+6. **The window-flow measurement is not good enough for the `airflow_m3h` column (§3).** It integrates the interpolated velocity over a plane in each opening and gives the net flow.
+   - For same-wall cases it is ≈ 0, although plenty of air is exchanged.
+   - In B with tilted windows, inflow and outflow differ by up to 30 % (opposite walls tilt/tilt: 633 vs 930 m³/h), which is impossible for a closed room. A balances to within 2 %.
+   - The tracer is not affected: it uses the solver's exact, conservative face fluxes.
+7. **Cost of B:** 30–120 min per case on 4 cores, with two cases running side by side. 5 m/s and fast cross-ventilation need smaller time steps (Courant limit). The night's 10 cases took 6.3 h, so about 38 min per case.
+8. **Mesh fix:** one case failed `checkMesh` (2 sash faces with skewness 4.1). snappyHexMesh now uses checkMesh's limit (4) at walls. The default mesh is byte-identical.
+
+**Recommendation for decision M1 (to be decided by the team):**
+- **Method by layout:** A for windows on different walls (validated by 7 of 7 cases), B for same-wall cases. The `solver` column (§3) records which one was used. The labels are then B quality everywhere, at about 40 % of B's cost: 120 × 5 min + 60 × ~40 min ≈ 2 days of compute instead of about 5.
+- **Before the sweep:**
+  - a fine-mesh check of a same-wall case (A and B, about 3–4 h, one night), because of finding 3;
+  - A: run the tracer on the flow averaged over the last ~1000 iterations, not the last iteration (finding 5);
+  - `airflow_m3h`: measure the inflow on the exact face fluxes of the openings, not the interpolated plane (finding 6).
+- **Optional:** because of finding 4, wind speed could be dropped from the sampled inputs. Every geometry would run at 3 m/s, and other speeds would follow by scaling time with 3/U. The same compute then covers more window geometries. This is an ML-side decision, so it needs the team.
 
 ## 6. Checks before the big sweep
 
@@ -198,10 +228,13 @@ Findings:
 
 ## 9. Still open / next steps (state 2026-10-14, end of day 1)
 
-**Done:** the mesh decision (snappyHexMesh medium), about 5 min per case and 64 MB on disk per case. The solver benchmark was repeated on this mesh (§5, 2026-10-14).
+**Done:** the mesh decision (snappyHexMesh medium), about 5 min per case and 64 MB on disk per case. The solver benchmark was repeated on this mesh and extended to 12 cases (§5, 2026-10-15).
 
 Next, in this order:
-1. **Decide M1 again (§5):** method A for all cases, B for all cases, or first one or two more comparisons with a tilted window. Whether B is chosen also changes the sweep's compute time (about 15 h for A, about 5 days for B).
+1. **Decide M1 (§5, recommendation there):** method by layout (A for windows on different walls, B for the same wall), plus whether wind speed is sampled or obtained by scaling. Then the follow-ups from §5:
+   - a fine-mesh check of a same-wall case;
+   - A on the iteration-averaged flow;
+   - `airflow_m3h` from exact face fluxes.
 2. **Sweep generator.** Latin hypercube sampling of the inputs (§2), writing one YAML per case (e.g. `configs/sweep/`). Train set of about 150 and a separate test set of about 30; invalid samples are redrawn and logged.
 3. **Dataset writer:** `results/summary.csv` with the columns of §3, plus `results/timeseries/<case_id>.csv`. Freeze the columns (M2). Still missing from §3: the inputs as columns, `status`/`error_message`, `git_commit`.
 4. **Run the sweep with `cfd.queue`** (detached; `--resume` after interruptions) and watch it with `analysis.monitor`.

@@ -14,7 +14,7 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | Geometry and mesh generator | ✅ |
 | OpenFOAM case: steady wind flow | ✅ first test case runs |
 | Tracer (air replacement) and metrics | ✅ runs on the frozen steady flow |
-| Solver benchmark: comparison with a fully transient run | ⚠️ repeated on the new mesh; method choice under review (see below) |
+| Solver benchmark: comparison with a fully transient run | ⚠️ 12 cases compared; method choice to be decided (see below) |
 | Mesh study | ✅ snappyHexMesh, medium cell sizes (see PLAN.md §6) |
 | Parameter sweep, dataset | planned |
 
@@ -48,16 +48,16 @@ The dataset uses a fast method:
 We compared it with a much more expensive one:
 - **(B)** compute the time-varying flow with the tracer (URANS), about 25–30× slower.
 
-We ran both on two cases: windows on opposite walls, and both windows on the same wall. The second is the hardest case for method A.
+We ran both methods on 12 cases: every window layout, turned and tilted windows, wind at 1, 3 and 5 m/s, and one case on a coarser mesh.
 
-![Benchmark, opposite walls](docs/images/benchmark_default.png)
-![Benchmark, same wall](docs/images/benchmark_same_wall.png)
+![Method A vs B on 12 cases](docs/images/method_comparison.png)
 
-- **Opposite walls:** the two methods agree within 4 %.
-- **Same wall:** method A is 24 % too slow. In the time-varying flow, air swings in and out of the windows, and on average about 235 m³/h flows from one window to the other. The steady flow has almost none of that.
-- **Cost:** method B costs about 40 min per case, compared with about 5 min for A. That would be about 5 days of compute for the whole sweep instead of about 15 h.
+- **Windows on different walls:** the two methods agree within 3 % in all 7 cases. The fast method is good enough here.
+- **Both windows on the same wall:** they differ by −6 % to +31 %. In the time-varying flow, air swings in and out of the windows, and the steady flow cannot represent that. These results also depend more on the mesh.
+- **Wind speed:** the results scale exactly with wind speed. At 1 m/s, the air is replaced 3× slower than at 3 m/s.
+- **Cost:** method B takes about 40 min per case, method A about 5 min.
 
-The team still has to decide which method the dataset uses. Details are in [PLAN.md §5](PLAN.md).
+The team still has to decide. Our recommendation is method A for windows on different walls and method B for the same wall, which takes about 2 days of compute for the sweep. Details are in [PLAN.md §5](PLAN.md).
 
 ## What is simulated
 
@@ -102,6 +102,7 @@ python -m geometry.render configs/default.yaml --out docs/images/default.png  # 
 python -m cfd.run_case --config configs/default.yaml                          # wind + air replacement (needs OpenFOAM, ~6 min)
 python -m cfd.run_case --config configs/default.yaml --tracer-only            # rerun only the air replacement
 python -m analysis.visualize --config configs/default.yaml --kind flow --out flow.png   # also: --kind tracer, --kind curve
+python -m analysis.compare_methods configs/comparison/*.yaml --out comparison.png      # method A vs B table and curves
 python -m analysis.monitor                                                    # live window: progress, CPU cores, convergence
 python -m pytest                                                              # run all tests
 ```
