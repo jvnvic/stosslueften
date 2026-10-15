@@ -457,3 +457,9 @@ Template:
   - Estimated the sweep at about 2 days on this PC, similar to the laptop.
   - Wrote the results into HPC_PLAN.md §8.
 - **Human decisions / review:** Daniel set up the PC with the guide and ran the checks. The machine check output and the reboot test result are still to be confirmed.
+
+## 2026-10-15 — Keep-alive task: distro name as a parameter
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:** The keep-alive task did not run on the simulation PC because its WSL distro is called `Ubuntu`, not `Ubuntu-24.04`. Made the name a parameter of `windows_setup.ps1` (`-Distro`) and updated the guide. Told Daniel the one-line local change as an alternative.
+- **Human decisions / review:** Daniel found that the machine check reported no keep-alive process, and the distro name.

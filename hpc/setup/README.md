@@ -52,7 +52,7 @@ wsl --install -d Ubuntu-24.04
 
    ```powershell
    wsl --update
-   wsl -l -v          # should list Ubuntu-24.04 with VERSION 2
+   wsl -l -v          # lists the distro with VERSION 2; note its name (Ubuntu-24.04, or just Ubuntu)
    ```
 
 ## 3. In Ubuntu: deploy key, repository, installation (about 45 min, mostly waiting)
@@ -106,13 +106,15 @@ The script does three things:
 - writes `.wslconfig`: 16 threads, 24 GB RAM, no idle shutdown;
 - registers the task that keeps WSL running from logon on.
 
-In an **administrator PowerShell**, with your Linux user name in the path:
+In an **administrator PowerShell**, with your distro name from step 2 (twice) and your Linux user name:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File \\wsl.localhost\Ubuntu-24.04\home\<linux user>\stosslueften\hpc\setup\windows_setup.ps1
+powershell -ExecutionPolicy Bypass -File \\wsl.localhost\<distro>\home\<linux user>\stosslueften\hpc\setup\windows_setup.ps1 -Distro <distro>
 wsl --shutdown
 Start-ScheduledTask -TaskName "stosslueften WSL keep-alive"
 ```
+
+The keep-alive task starts `wsl.exe -d <distro>`. With a wrong name it starts nothing, and the machine check reports "no keep-alive process".
 
 `wsl --shutdown` applies the new settings, including systemd. Open the Ubuntu window again afterwards.
 

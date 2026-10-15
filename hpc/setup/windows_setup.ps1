@@ -1,10 +1,14 @@
 # Windows part of the simulation PC setup (hpc/setup/README.md, step 4).
 # Run once in an administrator PowerShell; running it again is harmless:
-#   powershell -ExecutionPolicy Bypass -File \\wsl.localhost\Ubuntu-24.04\home\<linux user>\stosslueften\hpc\setup\windows_setup.ps1
+#   powershell -ExecutionPolicy Bypass -File \\wsl.localhost\<distro>\home\<linux user>\stosslueften\hpc\setup\windows_setup.ps1 -Distro <distro>
+# <distro> is the name that `wsl -l -v` shows, e.g. Ubuntu-24.04 or Ubuntu.
 # It sets the power options, writes .wslconfig and registers the WSL keep-alive task.
 
+param(
+    [string]$Distro = "Ubuntu-24.04"
+)
+
 $ErrorActionPreference = "Stop"
-$Distro = "Ubuntu-24.04"
 $TaskName = "stosslueften WSL keep-alive"
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 
