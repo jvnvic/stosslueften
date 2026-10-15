@@ -154,12 +154,14 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 | `analysis/` | Metrics and pictures from solved cases |
 | `geometry/` | Window placement, the Gmsh geometry and mesh generator, and the 3D renders |
 | `docs/images/` | Pictures used in this README |
+| `docs/overview/` | One-page project overview (LaTeX and PDF) |
 | `tests/` | Automated tests |
 | `cases/` | Generated simulation folders (not in git) |
 | `results/` | The dataset (planned) |
 
 ## Documentation
 
+- [docs/overview/overview.pdf](docs/overview/overview.pdf): one-page overview of the project for readers without CFD background (source: `overview.tex`, build with `latexmk -pdf`).
 - [PLAN.md](PLAN.md): agreed decisions, dataset columns and schedule.
 - [VENTILATION_CFD_PROJECT.md](VENTILATION_CFD_PROJECT.md): the original project specification.
 - [log.md](log.md): how AI tools were used in each step (a course requirement).

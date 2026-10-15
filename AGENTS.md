@@ -96,6 +96,7 @@ Not implemented yet (PLAN.md §4): the transient comparison run (benchmark optio
 - `cfd/templates/transient/` is the option-B comparison stage: pimpleFoam starting from the steady solution, with a spin-up and then the tracer via the `scalarTransport` function object. The runner uses `mpirun --bind-to none` so that two cases can share the CPU.
 - `analysis/visualize.py` reads a solved case with PyVista. It renders top views at window height (air speed with streamlines, or the tracer) and plots the replacement curve with matplotlib.
 - `tests/`: pytest.
+- `docs/overview/overview.tex` is a one-page overview for the course (PDF next to it, `latexmk -pdf`). Update it when the status changes significantly.
 - `docs/images/` holds the images used in README.md. Re-render them when the geometry or the examples change.
 
 The rest of the planned layout is in spec §7.

@@ -349,3 +349,9 @@ Template:
 - **AI tool / model:** Claude Code (Claude Opus 5.5)
 - **What the AI did:** Wrote a short web page for a reader without CFD background (published as a private Claude artifact). It covers the goal (inputs and outputs of the dataset), a five-step schematic of one simulation, the checks made so far with their results, the current status and a short glossary. It reuses the room picture from `docs/images/`.
 - **Human decisions / review:** Daniel asked for a very short, simple overview for the course teacher.
+
+## 2026-10-15 — One-page overview as a LaTeX PDF
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:** Replaced the web page from the previous entry with a plain one-page LaTeX document, `docs/overview/overview.tex` and `.pdf`. It has the same content (goal, inputs and outputs, five-step process diagram, checks table, status) plus the streamline picture of the default case.
+- **Human decisions / review:** Daniel preferred a plain LaTeX page to a styled web page, and asked for the streamline picture to be included.

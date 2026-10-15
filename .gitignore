@@ -15,3 +15,11 @@ Thumbs.db
 
 # OpenFOAM build output of our own solvers
 cfd/solvers/*/Make/linux64*/
+
+# LaTeX build files (keep the .tex and the .pdf)
+docs/**/*.aux
+docs/**/*.fdb_latexmk
+docs/**/*.fls
+docs/**/*.log
+docs/**/*.out
+docs/**/*.synctex.gz
