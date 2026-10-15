@@ -407,3 +407,13 @@ Template:
   - The plan also covers the dashboard layout and look, a failure table, the machine setup with a reference check against the laptop, build phases and open decisions.
   - Checked that the repo is now public, so Pages and Actions are free; noted in the plan that the dashboard is therefore public.
 - **Human decisions / review:** Daniel described the goal: a dedicated simulation PC, job control and status on GitHub, monitor-like statistics plus pictures, robust and fully remote. The open decisions in §10 are his.
+
+## 2026-10-15 — HPC plan: decisions added
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:** Updated `HPC_PLAN.md` with Daniel's answers.
+  - The public repo is OK; the PC is a dedicated Ryzen 7 8845HS with 32 GB RAM, 1 TB and Windows 11; emergency access is physical.
+  - Added notifications through GitHub issues: one issue per run, batched comments, and a token limited to this repo that stays on the HPC.
+  - Added setup values for this machine: WSL memory, and how to measure throughput with the extra threads.
+  - Recorded that the sweep generator and dataset writer come after the remaining benchmarks.
+- **Human decisions / review:** Daniel answered the five open questions and set the order of work.

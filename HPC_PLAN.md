@@ -1,10 +1,10 @@
 # HPC runner: remote-controlled sweep (plan)
 
-Status: **proposal, 2026-10-15. Nothing is built yet.** Decisions marked *(open)* are listed in §10.
+Status: **plan agreed 2026-10-15; nothing is built yet.** The decisions are in §10.
 
 ## 1. Goal
 
-A dedicated Windows PC with WSL2 (the "HPC") runs the whole sweep (PLAN.md §9): hundreds of cases over several days. It has no keyboard or screen time from us.
+A dedicated Windows 11 PC with WSL2 (the "HPC") runs the whole sweep (PLAN.md §9): hundreds of cases over several days. It has a Ryzen 7 8845HS (8 cores, 16 threads), 32 GB RAM and a 1 TB disk. Day-to-day work happens remotely; Daniel has physical access for emergencies.
 
 - **Control** works by pushing files to GitHub: a run configuration, plus a small control file for pause, stop and retry.
 - **Status** is shown on a GitHub Pages dashboard. It has the same numbers as `analysis.monitor`, plus pictures of the latest room setup and its streamlines.
@@ -103,6 +103,15 @@ runner_ref: main      # runner code version; applied only when paused and idle (
 
 **Remote update of the runner:** set `runner_ref` and `state: pause`. When no case is running, the runner checks out that commit and restarts itself. Running cases are never affected by code updates, because a run keeps its pinned code commit.
 
+**Notifications** come through GitHub issues, so the GitHub app on the phone shows them.
+- **One issue per run**, opened when the run starts. Each event is a comment on it, which notifies:
+  - a case failed after its retries;
+  - the runner paused itself (disk);
+  - the runner came back after a reboot or a long network loss;
+  - the run finished, with a summary. The issue is closed then.
+- **Not too many messages:** comments are batched to at most one per 30 min, except the final summary.
+- **Access:** issues need a token, because a deploy key only works for git. It is a fine-grained access token limited to this repo with *Issues: read and write*. It is stored only on the HPC (`~/.config/stosslueften/token`, readable only by the user) and is never in the repo or in `status.json`.
+
 ## 6. Status data and dashboard
 
 `status.json` (about 20–50 KB) contains:
@@ -161,7 +170,7 @@ runner_ref: main      # runner code version; applied only when paused and idle (
 | Windows Update restart | Like a reboot | Pause updates for the sweep's duration, and set active hours. |
 | Two people edit control.yaml | Git merge on `main` as usual | The runner only reads it. |
 
-**Remote access:** if Windows or WSL itself hangs, git-based control can't help. As an emergency path we need remote desktop or SSH (e.g. Tailscale) to the HPC. *(open)*
+**Emergency access:** if Windows or WSL itself hangs, git-based control can't help. Daniel then works on the HPC directly. The dashboard's `OFFLINE?` badge and the missing heartbeat show when that is needed.
 
 ## 8. HPC setup (phase 0)
 
@@ -172,7 +181,7 @@ runner_ref: main      # runner code version; applied only when paused and idle (
    - auto-login;
    - BIOS "restore on AC power loss".
 2. **WSL2 with Ubuntu 24.04.**
-   - `.wslconfig`: cores and memory for WSL, and `vmIdleTimeout=-1`.
+   - `.wslconfig`: all 16 threads, `memory=24GB` (WSL's default is half of the 32 GB), and `vmIdleTimeout=-1`.
    - `/etc/wsl.conf`: `systemd=true`.
    - A Windows scheduled task at logon that starts the keep-alive.
 3. **OpenFOAM v2606** from the openfoam.com Ubuntu packages, including the development part for `wmake` (needed for `tracerFoam`).
@@ -185,7 +194,12 @@ runner_ref: main      # runner code version; applied only when paused and idle (
 5. **Reference check:**
    - Run the default case, `demo_1` and one same-wall case on the HPC with the same `--procs` as on the laptop.
    - The cell count must be identical, and t90 within 1 %. Otherwise we find the cause before mixing results from two machines.
-6. **Measure throughput:** time per A case and per B case for 2, 3 and 4 slots. Then choose `slots` and `procs_per_case` and record the choice.
+6. **Measure throughput** with `procs_per_case: 4` (the same as in the benchmark comparison runs):
+   - Compare 2 slots (one per 4 physical cores) with 3 and 4 slots (using the second thread of each core).
+   - CFD usually gains little from those extra threads, so 2–3 slots is the expected result.
+   - Record the time per A case and per B case, choose `slots`, and note the choice.
+   - Expectation: clearly faster than the laptop, so the sweep should take about 1–2 days. The measurement decides.
+   - The 8845HS is a laptop chip. If the PC is a mini PC, check during the pilot that it doesn't throttle under days of full load. Its temperature can't be read from inside WSL, so check it in Windows.
 
 ## 9. Build phases
 
@@ -199,9 +213,10 @@ runner_ref: main      # runner code version; applied only when paused and idle (
 | 5 | Full sweep (train + test) | `hpc-results` complete, `results/summary.csv` built | 2–3 days compute |
 
 **Prerequisites from PLAN.md §9:**
-- the sweep generator (writes `configs/sweep/<run_id>/`);
-- the dataset writer (reads `hpc-results`);
-- the checks before the sweep (fine-mesh check of a same-wall case with B, iteration-averaged flow for A, airflow from face fluxes).
+- the checks before the sweep (fine-mesh check of a same-wall case with B, iteration-averaged flow for A, airflow from face fluxes);
+- then the sweep generator (writes `configs/sweep/<run_id>/`) and the dataset writer (reads `hpc-results`). These are built alongside the runner, once the benchmarks are done.
+
+Until then, phases 0–4 use the existing configs in `configs/comparison/` and `configs/demo/`.
 
 **New code**
 - `hpc/runner.py`: the loop and the cases.
@@ -213,11 +228,12 @@ runner_ref: main      # runner code version; applied only when paused and idle (
 
 `cfd.queue` and `analysis.monitor` stay as they are for local use.
 
-## 10. Open decisions
+## 10. Decisions (Daniel, 2026-10-15)
 
-1. **Visibility.** The repo is public (checked 2026-10-15). The dashboard, the control files and `hpc-results` are therefore readable by anyone; only collaborators can change them. No secrets go into the repo; the deploy key stays on the HPC. Is that OK, or should the repo become private? A private repo needs GitHub Pro (free in the Student Developer Pack) for Pages, and the dashboard URL would still be public.
-2. **HPC hardware:** cores, RAM, free disk, Windows 10 or 11. These decide `slots` and `procs_per_case`.
-3. **The machine itself:** can it be dedicated for about a week, with auto-login, no sleep and paused updates?
-4. **Emergency remote access** (remote desktop or Tailscale SSH) for the case that Windows or WSL hangs.
-5. **Notifications:** should the runner open a GitHub issue when a run finishes or a case fails twice? That gives phone notifications through the GitHub app.
-6. **A second runner on the laptop:** run cases on both machines at the same time? Not planned for the first version, because sharing one case list between two runners needs claim handling.
+1. **Visibility:** the repo stays public. The dashboard, control files and `hpc-results` may be readable by anyone. No secrets go into the repo; the deploy key and the issue token stay on the HPC.
+2. **Hardware:** Ryzen 7 8845HS (8 cores, 16 threads), 32 GB RAM, 1 TB disk, Windows 11.
+3. **The machine** is dedicated to the sweep: auto-login, no sleep, updates paused.
+4. **Emergency access:** physical access by Daniel; no remote desktop or VPN needed.
+5. **Notifications:** yes, through GitHub issues (§5).
+6. **A second runner on the laptop:** not in the first version.
+7. **Order:** the sweep generator and dataset writer are built later, once the remaining benchmarks are done.
