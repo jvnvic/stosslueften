@@ -102,7 +102,7 @@ python -m geometry.render configs/default.yaml --out docs/images/default.png  # 
 python -m cfd.run_case --config configs/default.yaml                          # wind + air replacement (needs OpenFOAM, ~4 min)
 python -m cfd.run_case --config configs/demo/demo_2.yaml --steady-only        # same-wall case without the slow method B (quick test)
 python -m cfd.run_case --config configs/default.yaml --tracer-only            # rerun only the air replacement
-python -m analysis.visualize --config configs/default.yaml --kind flow --out flow.png   # also: --kind tracer, --kind curve
+python -m analysis.visualize --config configs/default.yaml --kind flow --out flow.png   # also: --kind tracer, curve, mesh
 python -m analysis.compare_methods configs/comparison/*.yaml --out comparison.png      # method A vs B table and curves
 python -m analysis.monitor                                                    # live window: progress, CPU cores, convergence
 python -m pytest                                                              # run all tests
@@ -157,7 +157,7 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 | `geometry/` | Window placement, the Gmsh geometry and mesh generator, and the 3D renders |
 | `docs/images/` | Pictures used in this README |
 | `docs/overview/` | One-page project overview (LaTeX and PDF) |
-| `docs/demo/` | Pictures of two randomly drawn demo cases (`configs/demo/`) |
+| `docs/demo/` | Pictures of two randomly drawn demo cases (`configs/demo/`): setup, streamlines, mesh |
 | `tests/` | Automated tests |
 | `cases/` | Generated simulation folders (not in git) |
 | `results/` | The dataset (planned) |

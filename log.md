@@ -378,3 +378,17 @@ Template:
   - Checked the whole path with a shortened same-wall case (5 s spin-up, 30 s tracer) through the queue, then deleted it.
   - Updated the README, `AGENTS.md` and the status lines of the overview PDF.
 - **Human decisions / review:** Daniel and the team decided on the method by layout (B for the same wall, A otherwise).
+
+## 2026-10-15 — Mesh renders of the demo cases
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Added `--kind mesh` to `analysis.visualize`. It draws four views:
+    - the whole domain cut at window height;
+    - the same cut around the building;
+    - a vertical cut through window 1;
+    - the surface grid with the roof removed.
+  - The cuts are coloured by cell size. Cropping keeps whole cells, because VTK's box clip would split them into triangles. Added a test for that.
+  - Rendered `docs/demo/demo_1_mesh.png` and `demo_2_mesh.png`.
+  - Known cosmetic artifact: in demo_2 the vertical cut lies 4 mm from a plane of cell faces, so a thin wavy line of sliver cells appears. Daniel said to leave it for demo purposes.
+- **Human decisions / review:** Daniel asked for the mesh renders and accepted the artifact.

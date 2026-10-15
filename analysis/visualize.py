@@ -4,10 +4,12 @@ Usage, from the repository root with the venv active (OpenFOAM is not needed):
     python -m analysis.visualize --config configs/default.yaml --kind flow   --out flow.png
     python -m analysis.visualize --config configs/default.yaml --kind tracer --out tracer.png
     python -m analysis.visualize --config configs/default.yaml --kind curve  --out curve.png
+    python -m analysis.visualize --config configs/default.yaml --kind mesh   --out mesh.png
 
 - flow:   air speed and streamlines at window height, seen from above
 - tracer: where the original indoor air still is after 30, 60 and 120 s, seen from above
 - curve:  share of air replaced over time, compared with a perfectly mixed room
+- mesh:   the computational grid: cuts through the domain and window 1, and the surface grid
 
 The results are read from cases/<case_id>/ with PyVista's OpenFOAM reader.
 """
@@ -36,6 +38,10 @@ SPEED_COLORS = LinearSegmentedColormap.from_list(
 )
 OLD_AIR_COLORS = LinearSegmentedColormap.from_list(
     "old_air", ["#fdf1ea", "#f9cdb7", "#f4a382", "#eb6834", "#c24f1e", "#8f3812", "#5c230a"]
+)
+# Light ramp for the mesh pictures, so that cell edges stay visible: blue = small cells, pale = large cells.
+CELL_SIZE_COLORS = LinearSegmentedColormap.from_list(
+    "cell_size", ["#3987e5", "#6da7ec", "#9ec5f4", "#cde2fb", "#f3f7fd"]
 )
 INK, MUTED, WALLS = "#2b2b2b", "#6b6b6b", "#b9b4ab"
 SURFACE, GRID, SERIES_1, SERIES_2 = "#fcfcfb", "#e1e0d9", "#2a78d6", "#eb6834"
@@ -146,6 +152,114 @@ def render_tracer(cfg: CaseConfig, case_dir: Path, out: Path) -> None:
     plotter.close()
 
 
+def read_grid(case_dir: Path, patches: tuple[str, ...]) -> tuple[pv.UnstructuredGrid, dict[str, pv.PolyData]]:
+    """The mesh cells, with their size in a 'size' array, and the named boundary patches."""
+    foam_file = case_dir / "case.foam"
+    foam_file.touch()
+    reader = pv.OpenFOAMReader(str(foam_file))
+    reader.set_active_time_value(reader.time_values[0])
+    for name in patches:
+        reader.enable_patch_array(f"patch/{name}")
+    data = reader.read()
+    cells = data["internalMesh"].compute_cell_sizes(length=False, area=False, volume=True)
+    # VTK counts prism volumes negative (different corner order than OpenFOAM), so use the magnitude
+    cells.cell_data["size"] = np.cbrt(np.abs(cells.cell_data["Volume"]))
+    return cells, {name: data["boundary"][name] for name in patches}
+
+
+def _grid_style(show_bar: bool) -> dict:
+    return dict(scalars="size", cmap=CELL_SIZE_COLORS, log_scale=True, clim=(0.02, 1.6), show_edges=True,
+                edge_color=INK, line_width=0.5, edge_opacity=0.55, lighting=False, show_scalar_bar=show_bar,
+                scalar_bar_args=_scalar_bar("Cell size [m]", "%.2f", n_labels=4))
+
+
+def _crop(cut: pv.PolyData, x0: float, x1: float, y0: float, y1: float) -> pv.PolyData:
+    """Keep the whole cells whose centre lies in the box (clip_box would split them into triangles)."""
+    centres = cut.cell_centers().points
+    inside = (centres[:, 0] > x0) & (centres[:, 0] < x1) & (centres[:, 1] > y0) & (centres[:, 1] < y1)
+    return cut.extract_cells(inside)
+
+
+def _flat(cut: pv.PolyData, u_axis: np.ndarray, v_axis: np.ndarray, origin: np.ndarray) -> pv.PolyData:
+    """Express a planar cut in its own 2D coordinates (u, v), drawn in the plane z = 0."""
+    flat = cut.copy()
+    rel = flat.points - origin
+    flat.points = np.column_stack([rel @ u_axis, rel @ v_axis, np.zeros(len(rel))])
+    return flat
+
+
+def render_mesh(cfg: CaseConfig, case_dir: Path, out: Path) -> None:
+    """The computational grid: the whole domain and the building cut at window height,
+    a vertical cut through window 1, and the surface grid with the roof removed."""
+    from geometry.render import COLORS, SURFACE, _add_lights, _cut, _wall_tops  # same look as the 3D room picture
+    from geometry.windows import place_windows
+
+    W, D, Hr = cfg.room.width_m, cfg.room.depth_m, cfg.room.height_m
+    cells, patches = read_grid(case_dir, ("building", "room_walls", "sashes", "ground"))
+    # Small offsets keep the cuts off the grid planes of the hex mesh, which would give double edges.
+    height = _window_height(cfg) + 0.004
+    plan = cells.slice(normal="z", origin=(0, 0, height))
+    plan.points[:, 2] = 0.0
+    xmin, xmax, ymin, ymax = cells.bounds[:4]
+
+    plotter = pv.Plotter(off_screen=True, shape=(2, 2), border=False, window_size=(1800, 1700))
+    plotter.set_background("white")
+
+    plotter.subplot(0, 0)
+    _add_footprint(plotter, cfg)
+    plotter.add_mesh(plan, **_grid_style(False))
+    plotter.add_text(f"Whole domain ({xmax - xmin:.0f} × {ymax - ymin:.0f} m), cut at window height\n"
+                     f"{cells.n_cells:,} cells. Wind from the south (bottom)",
+                     position="upper_left", font_size=11, color=INK)
+    _top_view(plotter, 1.0)
+
+    plotter.subplot(0, 1)
+    near = _crop(plan, -2.0, W + 2.0, -2.0, D + 2.0)
+    _add_footprint(plotter, cfg)
+    plotter.add_mesh(near, **_grid_style(True))
+    plotter.add_text("Around the building, same cut\n(gray: walls and open sashes)",
+                     position="upper_left", font_size=11, color=INK)
+    _top_view(plotter, 1.15)
+
+    plotter.subplot(1, 0)
+    window = place_windows(cfg)[0]
+    centre = window.start + window.wall.along * (cfg.window_size.width_m / 2 + 0.004)
+    section = cells.slice(normal=window.wall.along, origin=centre)
+    # u: distance into the room from the inner wall face, v: height
+    flat = _flat(section, window.wall.inward, np.array([0.0, 0.0, 1.0]), centre * np.array([1, 1, 0]))
+    flat = _crop(flat, -2.2, 2.8, -0.1, 3.4)
+    # gray behind the building part of the cut, showing through where there are no cells:
+    # from the outer wall face to where the room cells end, and from the floor to the top of the roof
+    t = cfg.room.wall_thickness_m
+    room_end = flat.points[flat.points[:, 1] < Hr, 0].max()
+    plotter.add_mesh(pv.Plane(center=((room_end - t) / 2, (Hr + t) / 2, -0.05), i_size=room_end + t, j_size=Hr + t),
+                     color=WALLS, lighting=False)
+    plotter.add_mesh(flat, **_grid_style(False))
+    plotter.add_text("Vertical cut through the middle of window 1\n(outside left, room right; gray: solid parts)",
+                     position="upper_left", font_size=11, color=INK)
+    _top_view(plotter, 1.15)
+
+    plotter.subplot(1, 1)
+    edges = dict(show_edges=True, edge_color="#55504a", line_width=0.6)
+    room = _cut(patches["room_walls"].extract_surface(algorithm="dataset_surface"), Hr - 1e-3)
+    plotter.add_mesh(room, color=COLORS["inner_walls"], **edges, **SURFACE)
+    plotter.add_mesh(_cut(patches["building"].extract_surface(algorithm="dataset_surface"), Hr - 1e-3),
+                     color=COLORS["outer_walls"], **edges, **SURFACE)
+    plotter.add_mesh(_wall_tops(cfg), color=COLORS["wall_cut"], **SURFACE)
+    plotter.add_mesh(patches["sashes"], color=COLORS["sashes"], **edges, **SURFACE)
+    ground = _crop(patches["ground"], -3.5, W + 3.5, -5.0, D + 3.0)
+    plotter.add_mesh(ground, color=COLORS["ground"], **edges, **SURFACE)
+    plotter.add_text("Surface grid of the building, roof removed", position="upper_left", font_size=11, color=INK)
+    plotter.camera.focal_point = (W / 2, D / 2 - 0.6, 1.0)
+    plotter.camera.position = (W / 2 + 6.0, D / 2 - 9.5, 11.5)
+    plotter.camera.up = (0, 0, 1)
+    plotter.camera.view_angle = 30
+    _add_lights(plotter, cfg)
+
+    plotter.screenshot(str(out))
+    plotter.close()
+
+
 def plot_curve(cfg: CaseConfig, case_dir: Path, out: Path) -> None:
     """Share of air replaced over time, with a perfectly mixed room for comparison."""
     summary = json.loads((case_dir / "summary.json").read_text())
@@ -203,7 +317,7 @@ def plot_curve(cfg: CaseConfig, case_dir: Path, out: Path) -> None:
     plt.close(fig)
 
 
-KINDS = {"flow": render_flow, "tracer": render_tracer, "curve": plot_curve}
+KINDS = {"flow": render_flow, "tracer": render_tracer, "curve": plot_curve, "mesh": render_mesh}
 
 
 def main(argv=None) -> None:

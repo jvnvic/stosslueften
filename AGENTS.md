@@ -58,7 +58,7 @@ python -m geometry.render configs/examples/*.yaml --out docs/images/layouts.png 
 python -m cfd.run_case --config configs/default.yaml          # mesh + steady flow + tracer -> cases/default/ (needs OpenFOAM)
 python -m cfd.run_case --config configs/default.yaml --tracer-only   # rerun the tracer on the existing flow
 python -m cfd.run_case --config configs/demo/demo_2.yaml --steady-only   # same-wall case without method B (quick test)
-python -m analysis.visualize --config configs/default.yaml --kind flow|tracer|curve --out <png>
+python -m analysis.visualize --config configs/default.yaml --kind flow|tracer|curve|mesh --out <png>
 python -m cfd.run_case --config configs/benchmark/same_wall.yaml --transient --procs 4   # option B comparison run (hours)
 python -m cfd.run_case --config configs/benchmark/same_wall.yaml --transient --resume   # continue it after an interruption
 python -m analysis.compare_methods configs/comparison/*.yaml --out <png>   # method A vs B table and curves
@@ -98,7 +98,7 @@ Not implemented yet (PLAN.md §4): the transient comparison run (benchmark optio
   - Large queues are summarised: counts, throughput, finish estimate, and only the relevant entries.
   - Light: `TailTable` reads only newly appended lines and plots are thinned. Each panel is wrapped so that errors cannot stop the window.
 - `cfd/templates/transient/` is the option-B comparison stage: pimpleFoam starting from the steady solution, with a spin-up and then the tracer via the `scalarTransport` function object. The runner uses `mpirun --bind-to none` so that two cases can share the CPU.
-- `analysis/visualize.py` reads a solved case with PyVista. It renders top views at window height (air speed with streamlines, or the tracer) and plots the replacement curve with matplotlib.
+- `analysis/visualize.py` reads a solved case with PyVista. It renders top views at window height (air speed with streamlines, or the tracer), the mesh (cuts coloured by cell size and the surface grid), and plots the replacement curve with matplotlib.
 - `tests/`: pytest.
 - `docs/overview/overview.tex` is a one-page overview for the course (PDF next to it, `latexmk -pdf`). Update it when the status changes significantly.
 - `docs/images/` holds the images used in README.md. Re-render them when the geometry or the examples change.
