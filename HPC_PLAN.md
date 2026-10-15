@@ -200,8 +200,25 @@ The step-by-step guide with all scripts is [hpc/setup/README.md](hpc/setup/READM
    - Compare 2 slots (one per 4 physical cores) with 3 and 4 slots (using the second thread of each core).
    - CFD usually gains little from those extra threads, so 2–3 slots is the expected result.
    - Record the time per A case and per B case, choose `slots`, and note the choice.
-   - Expectation: clearly faster than the laptop, so the sweep should take about 1–2 days. The measurement decides.
+   - Result: see *Phase 0 results* below.
    - The 8845HS is a laptop chip. If the PC is a mini PC, check during the pilot that it doesn't throttle under days of full load. Its temperature can't be read from inside WSL, so check it in Windows.
+
+**Phase 0 results (2026-10-15).** From the PC's output files (reference check, throughput, tests):
+- **Reference check passed:** the PC reproduces the laptop.
+  - Identical cell counts in all cases.
+  - Method A: t90 and τ within 0.2 % (default, demo_1) and 0.9 % (same wall; run on 4 instead of 8 cores).
+  - Method B (same wall): t90 +2.0 %, τ +2.7 %, within the 5 % tolerance.
+  - The window-flow numbers of B differ more (window 1: 133 vs 259 m³/h). That fits the known problem with that measurement (PLAN.md §5 finding 6) and does not affect the tracer.
+- **Speed per case:** about the same as the laptop at its best, but steady (no throttling seen).
+  - Default case: flow 171 s (laptop 170–247 s).
+  - Same-wall B case alone on 4 cores: 59 min.
+  - Meshing is a little slower (16–18 s vs 12 s).
+- **Throughput** (method A, 4 cores per case): 16.9, 17.0 and 16.8 cases per hour with 2, 3 and 4 slots.
+  - The 8 physical cores are fully used at 2 slots; the extra threads add nothing (CFD is limited by memory bandwidth).
+  - **Decision: `slots: 2`, `procs_per_case: 4`.**
+- **Estimated sweep time on this PC:** 120 A cases ≈ 7 h, plus 60 B cases ≈ 40 h (two at a time, ~80 min each), so **about 2 days**. That is the same as the laptop; the gain is a dedicated, steady machine.
+  - Running a separate run on the laptop at the same time (e.g. the test set) would roughly halve this, without any shared case list.
+- **Still to confirm:** the machine check output (`cases/check_machine.txt`) and the reboot test (guide steps 5 and 6) were not on the drive. The tests passed (130) and off-screen pictures work.
 
 ## 9. Build phases
 

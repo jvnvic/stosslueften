@@ -443,3 +443,17 @@ Template:
   - Checked beforehand that all pinned Python packages exist for Ubuntu's Python 3.12. Tested the scripts on the laptop as far as possible: OpenFOAM loading, the machine check, and the comparison on the laptop's own results. Added 4 tests.
   - The "OpenFOAM not loaded" message now names both install paths.
 - **Human decisions / review:** Daniel chose to set up the PC next; he will go through the guide at the machine.
+
+## 2026-10-15 — Simulation PC: phase 0 results
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Read the PC's output files from a USB drive (reference check, throughput measurement, case logs, test log, render test).
+  - Reference check passed:
+    - identical cell counts;
+    - method A within 0.2–0.9 % of the laptop;
+    - method B within 2.0 % (t90) and 2.7 % (τ).
+  - Throughput is flat at about 17 method-A cases per hour for 2, 3 or 4 slots, because the 8 cores are saturated. Recorded the choice of 2 slots with 4 cores per case.
+  - Estimated the sweep at about 2 days on this PC, similar to the laptop.
+  - Wrote the results into HPC_PLAN.md §8.
+- **Human decisions / review:** Daniel set up the PC with the guide and ran the checks. The machine check output and the reboot test result are still to be confirmed.
