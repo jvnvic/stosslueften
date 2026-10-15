@@ -30,7 +30,13 @@ The mesh is a hex-dominant snappyHexMesh with 103k cells, and the whole case (me
 
 ![Share of air replaced over time](docs/images/default_curve.png)
 
-At the start, the room is full of "old" indoor air (a tracer with value 1), and outdoor air is fresh (value 0). The tracer is then carried and mixed by the simulated wind flow.
+**How the tracer works.** Imagine the room air were coloured with ink.
+1. **Start:** all air inside the room is coloured (value 1 = 100 % old air). The outdoor air is clear (value 0 = fresh air).
+2. **Opening the windows:** the simulated wind carries the coloured air out of the windows and brings clear air in. Swirls in the air also mix the two, like stirring milk into coffee.
+3. **Every 0.2 s** the computer moves the colour a little further with the airflow, for 10 minutes in total.
+4. **Measuring:** at each step we take the average colour of the whole room. If it is 0.3, then 30 % of the air is still old air, so 70 % has been replaced. That gives the curve above.
+
+The colour is only a marker. It does not push the air around, so the wind can be computed first and the colour moved through it afterwards (the fast method A). For windows on the same wall, the airflow keeps changing over time, so wind and colour are computed together (method B, see below).
 
 - **90 % replaced:** after **76 s**.
 - **Time constant:** the curve follows 1 − exp(−t/τ) with **τ = 33.5 s**.

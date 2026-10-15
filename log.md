@@ -392,3 +392,9 @@ Template:
   - Rendered `docs/demo/demo_1_mesh.png` and `demo_2_mesh.png`.
   - Known cosmetic artifact: in demo_2 the vertical cut lies 4 mm from a plane of cell faces, so a thin wavy line of sliver cells appears. Daniel said to leave it for demo purposes.
 - **Human decisions / review:** Daniel asked for the mesh renders and accepted the artifact.
+
+## 2026-10-15 — README: tracer explained simply
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:** Added a short, plain-language explanation of the tracer to the README's air-replacement section. It uses an ink analogy in four steps (start, opening, time steps, measuring) and says why the tracer can be computed after the wind for method A.
+- **Human decisions / review:** Daniel asked for a very simple explanation.
