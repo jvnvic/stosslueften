@@ -34,10 +34,11 @@ from pathlib import Path
 import numpy as np
 
 from analysis.metrics import fresh_fraction_curve, read_series, tracer_bounds, tracer_metrics
-from cfd.case_setup import set_patch_types, write_case_files
+from cfd.case_setup import average_start, set_patch_types, window_zone_sign, write_case_files
 from cfd.config import CaseConfig, ConfigError, load_config
 from geometry.generate import generate
 from geometry.surfaces import write_obstacle_stl
+from geometry.windows import place_windows
 
 CASES = Path("cases")
 TRACER_SOLVER = Path(__file__).parent / "solvers" / "tracerFoam"
@@ -126,7 +127,31 @@ def prepare_flow(cfg: CaseConfig, case_dir: Path) -> None:
         raise RuntimeError(f"checkMesh found mesh problems, see {case_dir / 'log.checkMesh'}")
 
 
-def flow_summary(case_dir: Path) -> dict:
+def window_flows(cfg: CaseConfig, post: Path, start: float) -> dict:
+    """Mean flows through the window openings from `start` on [m^3/h] (PLAN.md §5, finding 6).
+
+    Per window: net flow into the room (with its standard deviation over time) and inflow, which
+    also counts air that enters and leaves through the same window. airflow_m3h is the inflow
+    through both windows; balance_m3h (net in through both) should be close to 0.
+    """
+    result = {"net": {}, "net_std": {}, "inflow": {}}
+    for pw in place_windows(cfg):
+        net = read_series(post / f"{pw.name}Net", "surfaceFieldValue.dat")
+        total = read_series(post / f"{pw.name}Abs", "surfaceFieldValue.dat")
+        n = min(len(net), len(total))
+        time = net[:n, 0]
+        net_in = window_zone_sign(pw) * net[:n, -1] * 3600
+        inflow = (total[:n, -1] * 3600 + net_in) / 2
+        keep = time >= start if np.any(time >= start) else time == time[-1]  # stopped early: last value
+        result["net"][pw.name] = round(float(net_in[keep].mean()), 1)
+        result["net_std"][pw.name] = round(float(net_in[keep].std()), 1)
+        result["inflow"][pw.name] = round(float(inflow[keep].mean()), 1)
+    result["airflow_m3h"] = round(sum(result["inflow"].values()), 1)
+    result["balance_m3h"] = round(sum(result["net"].values()), 1)
+    return result
+
+
+def flow_summary(cfg: CaseConfig, case_dir: Path) -> dict:
     log = (case_dir / "log.simpleFoam").read_text(errors="replace")
     converged = re.search(r"SIMPLE solution converged in (\d+) iterations", log)
     iterations = int(converged.group(1)) if converged else int(re.findall(r"^Time = (\d+)", log, re.M)[-1])
@@ -135,14 +160,19 @@ def flow_summary(case_dir: Path) -> dict:
         residuals[field] = float(value)  # keeps the last (final) value per field
     n_cells = int(re.search(r"^\s+cells:\s+(\d+)", (case_dir / "log.checkMesh").read_text(), re.M).group(1))
     post = case_dir / "postProcessing"
-    flows = {w: read_series(post / f"{w}Flow", "surfaceFieldValue.dat")[-1, -1] for w in ("window1", "window2")}
+    averaged = (case_dir / _latest_time(case_dir) / "phiMean").exists()
+    flows = window_flows(cfg, post, average_start(cfg) if averaged else float("inf"))
     return {
         "n_cells": n_cells,
         "iterations": iterations,
         "converged": bool(converged),
         "final_residuals": {k: float(f"{v:.2e}") for k, v in residuals.items()},
+        "flow_averaged_from_iteration": average_start(cfg) if averaged else None,
         "room_mean_speed_ms": round(float(read_series(post / "roomAverage", "volFieldValue.dat")[-1, -1]), 4),
-        "window_net_inflow_m3h": {k: round(float(v) * 3600, 1) for k, v in flows.items()},
+        "window_net_inflow_m3h": flows["net"],
+        "window_inflow_m3h": flows["inflow"],
+        "airflow_m3h": flows["airflow_m3h"],
+        "flow_balance_m3h": flows["balance_m3h"],
     }
 
 
@@ -164,9 +194,19 @@ def prepare_tracer(cfg: CaseConfig, case_dir: Path) -> Path:
     shutil.copytree(case_dir / "constant" / "polyMesh", tracer_dir / "constant" / "polyMesh")
     steady = case_dir / _latest_time(case_dir)
     for field in ("phi", "nut"):
-        shutil.copy(steady / field, tracer_dir / "0" / field)
+        # the averaged flow if the solver ran long enough to average it (it stops early only when converged)
+        mean = steady / f"{field}Mean"
+        copy_field(mean if mean.exists() else steady / field, tracer_dir / "0" / field, field)
     _foam(["setFields"], tracer_dir)  # C = 1 in the room
     return tracer_dir
+
+
+def copy_field(source: Path, target: Path, name: str) -> None:
+    """Copy an OpenFOAM field file under a new field name (e.g. phiMean -> phi), fixing its header."""
+    data = source.read_bytes()
+    head, body = data[:2000], data[2000:]  # the header is plain text, the values may be binary
+    head = re.sub(rb"(\bobject\s+)\w+;", rb"\g<1>" + name.encode() + b";", head, count=1)
+    target.write_bytes(head + body)
 
 
 def _save_curve(path: Path, t: np.ndarray, fresh: np.ndarray, duration_s: float) -> None:
@@ -273,11 +313,12 @@ def transient_summary(cfg: CaseConfig, case_dir: Path, transient_dir: Path) -> d
     times, wall = _transient_log_times(transient_dir)
     n_steps, end_time = len(times), times[-1]  # the end time may be shortened during a run
     summary = {k: round(v, 4) for k, v in tracer_metrics(t, fresh, cfg.flow.tracer_duration_s).items()}
-    for window in ("window1", "window2"):
-        flow = read_series(transient_dir / "postProcessing" / f"{window}Flow", "surfaceFieldValue.dat")
-        flow = flow[flow[:, 0] > spinup, -1] * 3600  # m^3/h, after the spin-up
-        summary[f"{window}_net_inflow_mean_m3h"] = round(float(flow.mean()), 1)
-        summary[f"{window}_net_inflow_std_m3h"] = round(float(flow.std()), 1)
+    flows = window_flows(cfg, transient_dir / "postProcessing", spinup)  # averaged after the spin-up
+    for window, net in flows["net"].items():
+        summary[f"{window}_net_inflow_mean_m3h"] = net
+        summary[f"{window}_net_inflow_std_m3h"] = flows["net_std"][window]
+    summary.update(window_inflow_m3h=flows["inflow"], airflow_m3h=flows["airflow_m3h"],
+                   flow_balance_m3h=flows["balance_m3h"])
     return {
         **summary,
         "tracer_min": float(f"{c_min:.3g}"),
@@ -340,7 +381,7 @@ def main(argv=None) -> None:
             meshed = time.perf_counter()
             _run_solver("simpleFoam", case_dir, cfg.flow.n_procs, ["-latestTime"])
             timings = {"mesh_seconds": meshed - started, "flow_seconds": time.perf_counter() - meshed}
-            summary = {"case_id": cfg.case_id, **flow_summary(case_dir)}
+            summary = {"case_id": cfg.case_id, **flow_summary(cfg, case_dir)}
 
         started = time.perf_counter()
         _ensure_tracer_solver(case_dir)

@@ -61,6 +61,6 @@ roomAverage
     writeInterval   1;
 }
 
-// Net air flow through each window opening [m^3/s], positive = into the room.
-// Written every time step to show how much the flow fluctuates.
+// Flow through each window opening [m^3/s]: sum of the face fluxes over a face zone,
+// written every 10 time steps to show how much the flow fluctuates.
 @WINDOW_MONITORS@

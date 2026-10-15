@@ -31,5 +31,21 @@ roomAverage
     writeInterval   10;
 }
 
-// Net air flow through each window opening [m^3/s], positive = into the room.
+// Mean flow over the second half of the iterations. The tracer runs on these fields, so its
+// result does not depend on where a slightly oscillating solution stops (PLAN.md §5, finding 5).
+flowAverage
+{
+    type            fieldAverage;
+    libs            (fieldFunctionObjects);
+    timeStart       @AVERAGE_START@;
+    writeControl    writeTime;
+    fields
+    (
+        U   { mean on; prime2Mean off; base iteration; }
+        phi { mean on; prime2Mean off; base iteration; }
+        nut { mean on; prime2Mean off; base iteration; }
+    );
+}
+
+// Flow through each window opening [m^3/s]: sum of the face fluxes over a face zone.
 @WINDOW_MONITORS@

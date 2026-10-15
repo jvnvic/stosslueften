@@ -40,4 +40,7 @@ actions
         source  boxToFace;
         box     (0 0 -0.01) (@ROOM_FLOOR_MAX@);
     }
+
+    // One face zone across each window opening, for the exact window flow (window1Net, window1Abs).
+@WINDOW_ZONES@
 );

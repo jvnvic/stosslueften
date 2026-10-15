@@ -119,11 +119,12 @@ def render_flow(cfg: CaseConfig, case_dir: Path, out: Path) -> None:
     if lines.n_points:
         plotter.add_mesh(lines.translate((0, 0, 0.01)), color=INK, line_width=1.8, opacity=0.8, lighting=False)
 
-    flows = json.loads((case_dir / "summary.json").read_text())["window_net_inflow_m3h"]
+    summary = json.loads((case_dir / "summary.json").read_text())
+    airflow = summary.get("airflow_m3h", summary["window_net_inflow_m3h"]["window1"])  # older cases: net flow
     plotter.add_text(
         f"Air speed at window height (z = {height:.2f} m), seen from above\n"
         f"Wind {cfg.wind_speed_ms:g} m/s from the south (bottom)\n"
-        f"Net flow in through window 1: {flows['window1']:,.0f} m³/h",
+        f"Airflow into the room: {airflow:,.0f} m³/h",
         position="upper_left", font_size=12, color=INK,
     )
     _top_view(plotter, 1.1)
@@ -267,7 +268,10 @@ def plot_curve(cfg: CaseConfig, case_dir: Path, out: Path) -> None:
     t, fresh = curve[:, 0], curve[:, 1]
     room = cfg.room
     volume = room.width_m * room.depth_m * room.height_m
-    flow = np.mean(np.abs(list(summary["window_net_inflow_m3h"].values()))) / 3600  # m^3/s
+    if "airflow_m3h" in summary:  # inflow through both windows
+        flow = summary["airflow_m3h"] / 3600  # m^3/s
+    else:  # older cases: net flow measured on a plane
+        flow = np.mean(np.abs(list(summary["window_net_inflow_m3h"].values()))) / 3600
     t90 = summary["t90_s"]
 
     fig, ax = plt.subplots(figsize=(8, 4.5), dpi=150, facecolor=SURFACE)
@@ -282,7 +286,7 @@ def plot_curve(cfg: CaseConfig, case_dir: Path, out: Path) -> None:
         ax.plot(t, 100 * fresh, color=SERIES_1, linewidth=2, label="Simulation (CFD)")
     if flow > 1e-6:
         mixed = 1 - np.exp(-t * flow / volume)  # every bit of incoming air mixes instantly
-        ax.plot(t, 100 * mixed, color=MUTED, linewidth=1.5, linestyle="--", label="Perfectly mixed, same through-flow")
+        ax.plot(t, 100 * mixed, color=MUTED, linewidth=1.5, linestyle="--", label="Perfectly mixed, same airflow")
     # Show at least 5 min, more if 90 % is reached later (in whole minutes).
     x_max = min(300 if not np.isfinite(t90) or t90 < 250 else 60 * np.ceil(t90 * 1.2 / 60), t[-1])
     ax.set_xlim(0, x_max)

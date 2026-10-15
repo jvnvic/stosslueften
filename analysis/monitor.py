@@ -350,15 +350,18 @@ def _plot_residuals(ax, run: Run, color: str) -> None:
 
 
 def _plot_window_flows(ax, run: Run, color: str) -> None:
-    _style(ax, "window flow [m³/h] (should level off)")
+    _style(ax, "net window flow [m³/h] (should level off)")
     plotted = False
     for window, line_color, dash in (("window1", TEXT, "-"), ("window2", MUTED, "--")):
-        _, data = series(run.folder / "postProcessing" / f"{window}Flow", "surfaceFieldValue.dat")
+        # face-zone sum (window1Net); cases from before 2026-10-16 have the sampled plane (window1Flow)
+        for name in (f"{window}Net", f"{window}Flow"):
+            _, data = series(run.folder / "postProcessing" / name, "surfaceFieldValue.dat")
+            if data.size:
+                break
         if data.size:
             data = _thin(data)
-            direction = "in" if data[-1, -1] >= 0 else "out"
             ax.plot(data[:, 0], np.abs(data[:, -1]) * 3600, color=line_color, linestyle=dash, linewidth=1.0,
-                    label=f"{window} {direction}")
+                    label=window)
             plotted = True
     if plotted:
         ax.legend(fontsize=6.5, frameon=False, loc="best", labelcolor=TEXT)

@@ -15,8 +15,10 @@ import math
 import re
 from pathlib import Path
 
+import numpy as np
+
 from cfd.config import CaseConfig
-from geometry.windows import UP, PlacedWindow, place_windows
+from geometry.windows import PlacedWindow, place_windows
 
 TEMPLATES = Path(__file__).parent / "templates"
 KAPPA, CMU = 0.40, 0.09  # same constants as templates/0/include/ABLConditions
@@ -49,36 +51,82 @@ def _vector(values) -> str:
     return "(" + " ".join(f"{v:.6g}" for v in values) + ")"
 
 
-def window_monitor(pw: PlacedWindow) -> str:
-    """Function object for the net air flow through one window opening (positive = into the room).
+# Margin around the opening for the measuring plate; outside the opening it lies inside the solid wall.
+ZONE_MARGIN_M = 0.05
 
-    It integrates the velocity over a plane in the middle of the wall opening,
-    where the sash and hinge post never reach.
+
+def _opening_axes(pw: PlacedWindow) -> tuple[int, int]:
+    """Indices of the coordinate axes along the wall and through the wall (walls are axis-aligned)."""
+    return int(np.argmax(np.abs(pw.wall.along))), int(np.argmax(np.abs(pw.wall.inward)))
+
+
+def window_zone(pw: PlacedWindow) -> str:
+    """topoSet action: a face zone across the window opening, in the middle of the wall.
+
+    It holds every mesh face whose owner-neighbour line crosses a plate in that plane, so the
+    sum of the face fluxes phi over the zone is the exact flow through the opening (PLAN.md §5,
+    finding 6). The sash and hinge post never reach this plane.
     """
     size = pw.size
-    centre = pw.start + pw.wall.along * size.width_m / 2 - pw.wall.inward * pw.wall_thickness_m / 2 + UP * size.height_m / 2
-    corners = pw.opening_corners()
-    return f"""{pw.name}Flow
-{{
-    type            surfaceFieldValue;
+    along, normal = _opening_axes(pw)
+    centre = pw.start + pw.wall.along * size.width_m / 2 - pw.wall.inward * pw.wall_thickness_m / 2
+    origin, span = centre.copy(), np.zeros(3)
+    origin[along] = centre[along] - size.width_m / 2 - ZONE_MARGIN_M
+    origin[2] = pw.start[2] - ZONE_MARGIN_M
+    span[along] = size.width_m + 2 * ZONE_MARGIN_M
+    span[2] = size.height_m + 2 * ZONE_MARGIN_M
+    return f"""    {{
+        name        {pw.name}FlowZone;
+        type        faceZoneSet;
+        action      new;
+        source      searchableSurfaceToFaceZone;
+        surfaceType searchablePlate;
+        origin      {_vector(origin)};
+        span        {_vector(span)};
+    }}"""
+
+
+def window_zone_sign(pw: PlacedWindow) -> float:
+    """+1 or -1: turns the zone's flux sum into a flow into the room.
+
+    The zone faces point along the plate normal, the positive axis through the wall.
+    """
+    _, normal = _opening_axes(pw)
+    return float(np.sign(pw.wall.inward[normal]))
+
+
+def window_monitor(pw: PlacedWindow) -> str:
+    """Function objects for the flow through one window opening, summed over its face zone [m^3/s].
+
+    Net = sum of phi (sign: see window_zone_sign). Abs = sum of |phi|, i.e. inflow plus outflow.
+    Inflow = (Abs + net into the room) / 2, which also counts air that enters and leaves through
+    the same window.
+    """
+    common = f"""    type            surfaceFieldValue;
     libs            (fieldFunctionObjects);
-    regionType      sampledSurface;
-    name            {pw.name};
-    sampledSurfaceDict
-    {{
-        type        cuttingPlane;
-        point       {_vector(centre)};
-        normal      {_vector(pw.wall.inward)};
-        bounds      {_vector(corners.min(axis=0))} {_vector(corners.max(axis=0))};
-        interpolate true;
-    }}
-    operation       areaNormalIntegrate;
-    fields          (U);
+    regionType      faceZone;
+    name            {pw.name}FlowZone;
+    fields          (phi);
     writeFields     false;
     writeControl    timeStep;
-    writeInterval   10;
+    writeInterval   10;"""
+    return f"""{pw.name}Net
+{{
+{common}
+    operation       sum;
+}}
+
+{pw.name}Abs
+{{
+{common}
+    operation       sumMag;
 }}
 """
+
+
+def average_start(cfg: CaseConfig) -> int:
+    """Iteration from which the steady flow is averaged: the second half of the iterations."""
+    return cfg.flow.max_iterations // 2
 
 
 def mesh_levels(cfg: CaseConfig) -> dict[str, float]:
@@ -148,6 +196,8 @@ def placeholders(cfg: CaseConfig) -> dict[str, str]:
         "ROOM_MAX": f"{room.width_m:g} {room.depth_m:g} {room.height_m:g}",
         "ROOM_FLOOR_MAX": f"{room.width_m:g} {room.depth_m:g} 0.01",
         "WINDOW_MONITORS": "\n".join(window_monitor(pw) for pw in place_windows(cfg)),
+        "WINDOW_ZONES": "\n".join(window_zone(pw) for pw in place_windows(cfg)),
+        "AVERAGE_START": str(average_start(cfg)),
         **snappy_placeholders(cfg),
     }
 

@@ -4,7 +4,9 @@ import math
 
 import pytest
 
-from cfd.case_setup import PATCH_TYPES, mesh_levels, set_patch_types, wind_profile, write_case_files
+from cfd.case_setup import (PATCH_TYPES, mesh_levels, set_patch_types, wind_profile, window_zone,
+                             window_zone_sign, write_case_files)
+from geometry.windows import place_windows
 
 
 def test_wind_profile_matches_the_log_law(make_config):
@@ -25,7 +27,10 @@ def test_all_placeholders_are_filled(make_config, tmp_path, stage):
     if stage == "flow":
         assert "internalField   uniform (0 3 0);" in (tmp_path / "0" / "U").read_text()
         monitors = (tmp_path / "system" / "monitors").read_text()
-        assert "window1Flow" in monitors and "window2Flow" in monitors
+        assert all(f"window{i}{op}" in monitors for i in (1, 2) for op in ("Net", "Abs"))
+        assert "type            fieldAverage;" in monitors and "timeStart       1000;" in monitors
+        topo = (tmp_path / "system" / "topoSetDict").read_text()
+        assert topo.count("source      searchableSurfaceToFaceZone;") == 2 and "window1FlowZone" in topo
     elif stage == "snappy":
         block = (tmp_path / "system" / "blockMeshDict").read_text()
         assert "hex (0 1 2 3 4 5 6 7) (21 38 10)" in block  # 1.6 m background cells
@@ -60,3 +65,13 @@ def test_mesh_levels_match_the_configured_sizes(make_config):
     levels = mesh_levels(make_config())
     # Background 1.6 m; 0.4 m near the building, 0.2 m in the room, 0.05 m in the openings, 0.025 m at sashes.
     assert levels == {"base": pytest.approx(1.6), "building": 2, "room": 3, "window": 5, "sash": 6}
+
+
+def test_window_zone_plates_lie_in_the_wall_and_signs_point_into_the_room(make_config):
+    cfg = make_config("adjacent_walls", w1=(2.5, "turn", 60), w2=(2.0, "tilt", 6))
+    south, east = place_windows(cfg)
+    assert window_zone_sign(south) == 1.0  # zone normal +y = into the room through the south wall
+    assert window_zone_sign(east) == -1.0  # zone normal +x points out of the room through the east wall
+    # the east plate is a y-z plate in the middle of the east wall (x = 5 + 0.3/2)
+    assert "origin      (5.15 1.45 0.85);" in window_zone(east)
+    assert "span        (0 1.1 1.35);" in window_zone(east)
