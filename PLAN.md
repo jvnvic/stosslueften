@@ -239,7 +239,12 @@ Findings:
 
 Next, in this order:
 1. **Before the sweep** (proposed in §5):
-   - a fine-mesh check of a same-wall case with B (one night);
+   - a fine-mesh check of same-wall cases with B (one night). The configs are ready in `configs/benchmark/`:
+     - `snappy_same_wall_fine` (fine mesh);
+     - `snappy_same_wall_shift_plus1cm` (medium mesh, window 1 moved 1 cm, to measure B's own scatter);
+     - `snappy_same_turn_tilt_fine` (a weaker-flow case, fine mesh).
+
+     Both fine meshes pass `checkMesh` (about 250k cells). About 4.5 h with two queues of 4 cores;
    - A on the iteration-averaged flow;
    - `airflow_m3h` from exact face fluxes.
 

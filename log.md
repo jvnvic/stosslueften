@@ -417,3 +417,15 @@ Template:
   - Added setup values for this machine: WSL memory, and how to measure throughput with the extra threads.
   - Recorded that the sweep generator and dataset writer come after the remaining benchmarks.
 - **Human decisions / review:** Daniel answered the five open questions and set the order of work.
+
+## 2026-10-15 — Same-wall mesh check prepared (not started)
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Prepared three runs to check method B's mesh dependence for same-wall cases:
+    - the benchmark case on the fine mesh;
+    - the same case on the medium mesh with window 1 moved 1 cm, to measure B's own scatter;
+    - a weaker-flow same-wall case (turn 45° + tilt) on the fine mesh.
+  - Meshed the two fine cases once as a pre-check, without simulating. Both pass `checkMesh` with about 250k cells.
+  - Wrote a start script with two queues of 4 cores each (about 4.5 h).
+- **Human decisions / review:** Daniel chose all three runs and asked not to start them yet.
