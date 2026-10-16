@@ -11,7 +11,11 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 - [VENTILATION_CFD_PROJECT.md](VENTILATION_CFD_PROJECT.md) is the original background spec. PLAN.md wins wherever they differ.
 - [DATASET_PLAN.md](DATASET_PLAN.md) plans the sweep generator and the dataset writer, including the two fixes needed before the real runs.
 - [HPC_PLAN.md](HPC_PLAN.md) plans the remote sweep runner (Windows/WSL2 PC, control and status through GitHub). It is built (`hpc/`, operations guide `hpc/README.md`); the pilot on the simulation PC is next.
-- Status (2026-10-14): the whole single-case pipeline works and is verified (PLAN.md §5–6): snappyHexMesh mesh, steady flow, frozen tracer, metrics, pictures, run queue and live monitor. **Decision M1 (2026-10-15): method B (transient) for same-wall cases, A (steady + tracer) otherwise**; `cfd.run_case` applies it automatically. **Next: the checks before the sweep, then the sweep (input sampling, `cfd.queue`, `results/summary.csv`)**; see PLAN.md §9.
+- Status (2026-10-16):
+  - The pipeline is verified (PLAN.md §5–6). Decision M1: method B for same-wall cases, A otherwise; `cfd.run_case` applies it.
+  - The inputs and CSV columns are decided and frozen (PLAN.md §2–3). The runs `train-v1` (150) and `test-v1` (30) are drawn in `configs/sweep/`.
+  - The remote runner and dashboard (`hpc/`) run on the simulation PC.
+  - **Next: run `train-v1` there, build the dataset writer**; see PLAN.md §9.
 - Deadline: less than 6 weeks from 2026-10-14.
 
 ## Environment

@@ -256,30 +256,24 @@ Findings:
 | The Gmsh tetrahedral mesh is poor or slow for RANS | Switch to `snappyHexMesh`, with the geometry exported as STL from Python |
 | Steady RANS gets single-sided (`same_wall`) exchange wrong (−6 to +31 %, §5) | Method B for same-wall cases (decision M1); check B's mesh dependence for these cases before the sweep |
 
-## 9. Still open / next steps (state 2026-10-15)
+## 9. Still open / next steps (state 2026-10-16)
 
 **Done:**
-- The mesh decision: snappyHexMesh medium, about 5 min per case and 64 MB on disk per case.
-- **Decision M1 (2026-10-15):** B for same-wall cases, A otherwise (§5). It is built into `cfd.run_case`.
+- Mesh decision: snappyHexMesh medium (§6).
+- **Decision M1:** B for same-wall cases, A otherwise, built into `cfd.run_case` (§5).
+- Same-wall mesh check and B's ±5 % scatter (§5). The uncertainty is approved: ±3 % for A rows, ±15 % for B rows.
+- The two pre-sweep fixes (DATASET_PLAN.md §1): A on the iteration-averaged flow, airflow from exact face fluxes, plus a divergence stop for B.
+- Input decisions (§2) and the frozen CSV columns (§3, M2).
+- The sweep generator. `train-v1` (150 cases) and `test-v1` (30) are drawn in `configs/sweep/`.
+- The simulation PC is set up (HPC_PLAN.md §8) and the remote runner with its dashboard is running there.
+  - Dashboard: https://jvnvic.github.io/stosslueften/, with buttons that start the "Runner control" workflow.
+  - Guide: `hpc/README.md`.
 
 Next, in this order:
-1. **Before the sweep** (proposed in §5; done on 2026-10-16 except the team decision):
-   - a fine-mesh check of same-wall cases with B (one night). The configs are ready in `configs/benchmark/`:
-     - `snappy_same_wall_fine` (fine mesh);
-     - `snappy_same_wall_shift_plus1cm` (medium mesh, window 1 moved 1 cm, to measure B's own scatter);
-     - `snappy_same_turn_tilt_fine` (a weaker-flow case, fine mesh).
-
-     Both fine meshes pass `checkMesh` (about 250k cells). About 4.5 h with two queues of 4 cores;
-   - A on the iteration-averaged flow;
-   - `airflow_m3h` from exact face fluxes.
-
-   Team decision: is wind speed sampled, or obtained by scaling?
-2. **Sweep generator.** Planned in [DATASET_PLAN.md](DATASET_PLAN.md) §2: a Latin hypercube per layout, a spec file per run, and redraws of invalid positions. Train set of about 150 and a separate test set of about 30.
-3. **Dataset writer:** `results/summary.csv` with the columns of §3, plus `results/timeseries/<case_id>.csv`. Freeze the columns (M2).
-   - For method B cases it takes the results from `summary.json["transient"]`.
-   - Still missing from §3: the inputs as columns, `status`/`error_message`, `git_commit`.
-4. **Run the sweep** on a separate Windows/WSL2 PC, controlled remotely through GitHub with a status dashboard on GitHub Pages ([HPC_PLAN.md](HPC_PLAN.md), proposal). Fallback: `cfd.queue` on this laptop, watched with `analysis.monitor`.
-   - About 2 days of compute: 120 × ~4 min (A) + 60 × ~40 min (B, two queues with 4 cores each).
-   - An interrupted B case restarts from its beginning in the queue.
-5. **Open decisions:** sample the hinge side or keep it fixed; tracer Δt 0.2 s or 0.5 s for the sweep (0.6 % difference, §5).
-6. **Still undecided:** exact deadline and deliverables, and the task split in the team. CFD runs only on Daniel's PC, so teammates could take visualizations, literature and documentation.
+1. **Run `train-v1` on the simulation PC.** On the dashboard: *Run*, tick `train-v1`, *Apply*. About 2 days.
+   - Its first 15 cases are the pilot. If a pilot was started there by hand with `cfd.queue`, the runner takes over the finished cases and waits for the busy ones.
+   - Check the first finished cases (dashboard, `hpc-results` branch) before leaving it alone.
+2. **Dataset writer** (`python -m sweeps.dataset`, DATASET_PLAN.md §3). It reads the `hpc-results` branch and writes `results/summary.csv` and `results/timeseries/`.
+3. **Run `test-v1`** after `train-v1`: tick it as the 2nd run, or later.
+4. **Hand over to the ML part:** `results/README.md` (data dictionary) and the uncertainty notes.
+5. **Still undecided:** exact deadline and deliverables, and the task split in the team. CFD runs only on Daniel's PCs, so teammates could take visualizations, literature and documentation.

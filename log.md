@@ -583,3 +583,11 @@ Template:
     - the browser's own field and button styles are switched off.
   - Checked: GitHub's CORS answer allows the request. Click-tested the run order and *Apply* in headless Chrome, and checked the phone layout with the live data.
 - **Human decisions / review:** Daniel reported the missing confirmation and the broken input design.
+
+## 2026-10-16 — Handoff before a context reset
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:** Prepared the project for a fresh AI context.
+  - Updated the status line in `AGENTS.md` and rewrote PLAN.md §9 to the current state: the fixes, decisions, generator, simulation PC, runner and dashboard are done. The next steps are to run `train-v1`, build the dataset writer, run `test-v1`, then hand over to the ML part.
+  - Saved machine and workflow facts to the assistant's local memory: the simulation PC setup and the working-copy workflow.
+- **Human decisions / review:** Daniel asked for the preparation.
