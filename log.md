@@ -564,3 +564,22 @@ Template:
     - changes without Python files (control commits, dashboard files) are applied without a restart.
   - Added 3 tests (16 runner tests pass). Checked the panel at desktop and phone width in a headless browser.
 - **Human decisions / review:** Daniel found editing `control.yaml` from the phone too clumsy and asked for control on the dashboard.
+
+## 2026-10-16 — Dashboard control: fixes after the first real use
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Daniel's *Apply* never reached GitHub (no workflow run), and the input fields looked broken. The likely cause: his browser had cached the old `app.js` and `style.css` (GitHub Pages lets browsers cache for 10 minutes), so the button had no code behind it and only reloaded the page.
+  - Fixed:
+    - the runner publishes the page with versioned file links (`app.js?v=<commit>`);
+    - *Apply* is a plain button that never reloads the page;
+    - after sending, the panel follows the workflow run on GitHub and reports its result;
+    - the panel says "nothing to change" instead of sending a no-op;
+    - runs are worked on in the order they are ticked, shown as 1., 2. Before, alphabetical order would have put `test-v1` before `train-v1`.
+  - Styles:
+    - the hidden Retry row stays hidden;
+    - no white picture boxes before the first case;
+    - 16 px input text (no zoom on iPhones);
+    - the browser's own field and button styles are switched off.
+  - Checked: GitHub's CORS answer allows the request. Click-tested the run order and *Apply* in headless Chrome, and checked the phone layout with the live data.
+- **Human decisions / review:** Daniel reported the missing confirmation and the broken input design.

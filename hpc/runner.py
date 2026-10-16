@@ -329,6 +329,11 @@ class Runner:
             for item in SITE.iterdir():
                 if item.is_file() and item.name != "sample_status.json":
                     shutil.copy(item, folder / item.name)
+            # versioned file names in the page, so browsers load new styles and scripts at once (Pages caches 10 min)
+            code = self.repo.head()[:7]
+            page = (folder / "index.html").read_text()
+            page = page.replace('href="style.css"', f'href="style.css?v={code}"').replace('src="app.js"', f'src="app.js?v={code}"')
+            (folder / "index.html").write_text(page)
             (folder / ".nojekyll").write_text("")  # serve the files as they are
             latest = self.state.latest
             if latest and latest.get("pictures"):

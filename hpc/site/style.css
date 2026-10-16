@@ -9,6 +9,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }  /* also for elements whose class sets display */
 body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--sans); }
 code, .num, td.num, .meta, .badge { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
@@ -59,10 +60,15 @@ h2 .dim { text-transform: none; letter-spacing: 0; font-weight: 400; }
 .seg input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: -2px; }
 .choices { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--mono); font-size: 13px; }
 .choices label { cursor: pointer; }
-.control input[type=text], .token input { background: var(--bg); color: var(--text); border: 1px solid var(--grid);
-  border-radius: 4px; padding: 6px 9px; font: 13px var(--mono); min-width: 0; flex: 1 1 220px; max-width: 420px; }
-button { background: var(--bg); color: var(--text); border: 1px solid var(--grid); border-radius: 4px; padding: 6px 14px;
-  font: 13px var(--sans); cursor: pointer; }
+/* own look on every browser (phones draw their own fields and buttons otherwise); 16px text stops iPhones
+   from zooming into a field when it is tapped */
+.control input[type=text], .token input { -webkit-appearance: none; appearance: none; background: var(--bg);
+  color: var(--text); border: 1px solid var(--grid); border-radius: 4px; padding: 7px 10px; font: 16px var(--mono);
+  min-width: 0; flex: 1 1 220px; max-width: 420px; }
+.control input[type=text]:focus, .token input:focus { outline: none; border-color: var(--blue); }
+.choices input[type=checkbox] { accent-color: var(--blue); width: 17px; height: 17px; margin: 0 6px 0 0; vertical-align: -3px; }
+button { -webkit-appearance: none; appearance: none; background: var(--bg); color: var(--text); border: 1px solid var(--grid);
+  border-radius: 4px; padding: 7px 16px; font: 14px var(--sans); cursor: pointer; }
 button:hover { border-color: var(--muted); }
 #apply { border-color: var(--blue); color: var(--blue); }
 button:disabled { opacity: 0.5; cursor: default; }

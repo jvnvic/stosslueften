@@ -173,6 +173,8 @@ def test_runner_runs_a_whole_run_and_publishes(world):
     published = json.loads(git("show", "hpc-status:status.json", cwd=remote))
     assert published["runs"][0]["counts"]["done"] == 6 and len(published["results"]) == 6
     assert "index.html" in git("ls-tree", "--name-only", "hpc-status", cwd=remote)
+    page = git("show", "hpc-status:index.html", cwd=remote)
+    assert 'src="app.js?v=' in page and 'href="style.css?v=' in page  # browsers load a new version at once
     assert git("rev-list", "--count", "hpc-status", cwd=remote).strip() == "1"
     files = git("ls-tree", "-r", "--name-only", "hpc-results", cwd=remote).split()
     assert "results/t/t_001/summary.json" in files and "results/t/t_001/config.yaml" in files

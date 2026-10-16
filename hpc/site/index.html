@@ -20,7 +20,7 @@
 
   <section class="panel wide">
     <h2>Control</h2>
-    <form id="control" class="control" autocomplete="off">
+    <form id="control" class="control" autocomplete="off" onsubmit="return false">
       <div class="row"><span class="label">State</span>
         <div class="seg" role="radiogroup" aria-label="runner state">
           <label><input type="radio" name="state" value="run"><span>Run</span></label>
@@ -34,7 +34,7 @@
       <div class="row"><span class="label">Skip</span>
         <input id="skip" type="text" placeholder="case ids, e.g. train-v1_017" spellcheck="false"></div>
       <div class="row"><span class="label"></span>
-        <button id="apply" type="submit">Apply</button>
+        <button id="apply" type="button">Apply</button>
         <span id="control-msg" class="small"></span></div>
     </form>
     <details class="token">
@@ -60,7 +60,8 @@
 
   <section class="panel latest">
     <h2>Latest finished case <span id="latest-id" class="dim"></span></h2>
-    <div class="pics">
+    <div id="latest-empty" class="empty">No finished case with pictures yet.</div>
+    <div id="pics" class="pics" hidden>
       <figure><img id="pic-setup" alt="3D view of the room with the opened windows"><figcaption>room setup</figcaption></figure>
       <figure><img id="pic-flow" alt="Air speed and streamlines at window height, seen from above"><figcaption>streamlines at window height</figcaption></figure>
     </div>

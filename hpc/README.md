@@ -34,11 +34,11 @@ GitHub app                ◀── one issue per run   (failures, self-pauses, 
 ## Controlling it
 
 **From the dashboard** (Control panel):
-1. Choose Run / Pause / Stop, tick the runs and optionally failed cases to retry, and enter case ids to skip.
-2. Press *Apply*.
+1. Choose Run / Pause / Stop, tick the runs and optionally failed cases to retry, and enter case ids to skip. The runs are worked on in the order you tick them; the panel numbers them (1., 2.).
+2. Press *Apply*. If your choice is already the current state, the panel says so and sends nothing.
 
 What happens then:
-- The workflow changes `hpc/control.yaml` on `main` (~30 s). The runner applies it within a minute and publishes right away.
+- The workflow changes `hpc/control.yaml` on `main` (~30 s). The panel reports when the workflow is done, with a link to it. The runner applies it within a minute and publishes right away.
 - The panel shows the request until the dashboard confirms it, usually after 1–3 minutes.
 - *Stop* asks for confirmation.
 
