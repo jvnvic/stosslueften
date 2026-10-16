@@ -1,0 +1,19 @@
+# systemd unit of the sweep runner (HPC_PLAN.md §5). install_runner.sh fills in @USER@, @REPO@, @HOME@.
+[Unit]
+Description=Stosslueften sweep runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=@USER@
+Environment=HOME=@HOME@
+Environment=PYTHONUNBUFFERED=1
+WorkingDirectory=@REPO@
+ExecStart=/bin/bash @REPO@/hpc/setup/run_runner.sh
+Restart=always
+RestartSec=15
+# Stop or restart only the runner itself: running cases continue and are adopted when it is back.
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

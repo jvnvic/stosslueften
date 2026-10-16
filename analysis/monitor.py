@@ -239,7 +239,8 @@ def read_queues(keep_s: float = 3600) -> list[dict]:
         except (OSError, ValueError):
             continue
         try:
-            alive = "cfd.queue" in " ".join(psutil.Process(state["pid"]).cmdline())
+            argv = psutil.Process(state["pid"]).cmdline()  # exact arguments, never substrings (pgrep -f trap)
+            alive = "cfd.queue" in argv or "hpc.runner" in argv  # the HPC runner writes the same format
         except (psutil.Error, KeyError):
             alive = False
         if alive or recent:

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stoßlüften HPC</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">STOSSLUEFTEN <span class="sep">·</span> HPC</div>
+  <div id="badge" class="badge">loading</div>
+  <div id="updated" class="meta"></div>
+  <div id="host" class="meta right"></div>
+</header>
+<div id="alert" class="alert" hidden></div>
+
+<main>
+  <section id="runs" class="panel wide"></section>
+
+  <section class="panel wide">
+    <h2>Running cases</h2>
+    <div id="running" class="cards"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Machine</h2>
+    <div id="machine"></div>
+  </section>
+
+  <section class="panel latest">
+    <h2>Latest finished case <span id="latest-id" class="dim"></span></h2>
+    <div class="pics">
+      <figure><img id="pic-setup" alt="3D view of the room with the opened windows"><figcaption>room setup</figcaption></figure>
+      <figure><img id="pic-flow" alt="Air speed and streamlines at window height, seen from above"><figcaption>streamlines at window height</figcaption></figure>
+    </div>
+    <div id="latest-values" class="values"></div>
+  </section>
+
+  <section class="panel wide">
+    <h2>Results so far <span class="dim">time constant τ vs wind speed, one dot per case</span></h2>
+    <div id="chart" class="chart"></div>
+  </section>
+
+  <section class="panel wide">
+    <h2>Recently finished</h2>
+    <div class="scroll"><table id="finished"></table></div>
+  </section>
+
+  <section class="panel">
+    <h2>Failures</h2>
+    <div id="failures"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Events</h2>
+    <ol id="events" class="events"></ol>
+  </section>
+</main>
+
+<footer>
+  Control: edit <code>hpc/control.yaml</code> on <code>main</code> (state run / pause / stop, runs, skip, retry).
+  The runner reads it every minute and publishes this page every ~6 minutes. See <code>hpc/README.md</code>.
+</footer>
+<div id="tip" class="tip" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
