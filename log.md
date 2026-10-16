@@ -591,3 +591,12 @@ Template:
   - Updated the status line in `AGENTS.md` and rewrote PLAN.md §9 to the current state: the fixes, decisions, generator, simulation PC, runner and dashboard are done. The next steps are to run `train-v1`, build the dataset writer, run `test-v1`, then hand over to the ML part.
   - Saved machine and workflow facts to the assistant's local memory: the simulation PC setup and the working-copy workflow.
 - **Human decisions / review:** Daniel asked for the preparation.
+
+## 2026-10-16 — Checked the AI instruction files (/init)
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:** Checked `CLAUDE.md` and `AGENTS.md` against the code. `CLAUDE.md` stays a plain import of `AGENTS.md`.
+  - Corrected outdated lines in `AGENTS.md`: the runner runs on the simulation PC and no pilot is pending, the two method fixes are done, and the tests take about 20 s.
+  - Added two missing facts: the path of one case from config to `results/summary.csv`, and how the default snappyHexMesh mesher gets its geometry (`geometry/surfaces.py` → `obstacle.stl`).
+  - Updated the two outdated status rows in `README.md`.
+- **Human decisions / review:** Daniel started the check with `/init`.

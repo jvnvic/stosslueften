@@ -9,8 +9,8 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 - **Current phase: data generation** (the CFD pipeline). The ML part will be planned later.
 - [PLAN.md](PLAN.md) holds the agreed decisions, dataset columns and schedule. **Read it first.**
 - [VENTILATION_CFD_PROJECT.md](VENTILATION_CFD_PROJECT.md) is the original background spec. PLAN.md wins wherever they differ.
-- [DATASET_PLAN.md](DATASET_PLAN.md) plans the sweep generator and the dataset writer, including the two fixes needed before the real runs.
-- [HPC_PLAN.md](HPC_PLAN.md) plans the remote sweep runner (Windows/WSL2 PC, control and status through GitHub). It is built (`hpc/`, operations guide `hpc/README.md`); the pilot on the simulation PC is next.
+- [DATASET_PLAN.md](DATASET_PLAN.md) plans the sweep generator (built) and the dataset writer (next).
+- [HPC_PLAN.md](HPC_PLAN.md) plans the remote sweep runner (Windows/WSL2 PC, control and status through GitHub). It is built and runs on the simulation PC (`hpc/`, operations guide `hpc/README.md`).
 - Status (2026-10-16):
   - The pipeline is verified (PLAN.md §5–6). Decision M1: method B for same-wall cases, A otherwise; `cfd.run_case` applies it.
   - The inputs and CSV columns are decided and frozen (PLAN.md §2–3). The runs `train-v1` (150) and `test-v1` (30) are drawn in `configs/sweep/`.
@@ -57,7 +57,7 @@ of    # loads OpenFOAM v2606 (alias from the AUR package); needed before any Ope
 Working now:
 
 ```bash
-python -m pytest                                              # all tests (~10 s)
+python -m pytest                                              # all tests (~20 s, no OpenFOAM needed)
 python -m pytest tests/test_windows.py -k collide             # a single test
 python -m geometry.generate --config configs/default.yaml     # geometry + mesh -> cases/default/mesh.msh
 python -m geometry.generate --config configs/default.yaml --no-mesh --gui   # Gmsh wireframe view
@@ -89,9 +89,11 @@ Not implemented yet: the dataset writer (`python -m sweeps.dataset`, DATASET_PLA
 
 ## Structure
 
+- One case flows like this: config YAML → `cases/<id>/` (steady flow; `tracer/` = method A; `transient/` = method B, same-wall cases only) → `cases/<id>/summary.json` → the runner packs it into the `hpc-results` branch → the dataset writer → `results/summary.csv`.
 - `configs/default.yaml` is one complete case. Every key is required, and `cfd/config.py` loads and validates it. Invalid values raise `ConfigError` with a clear message.
 - `geometry/windows.py` holds the wall frames, sash positions and the overlap/collision checks. It uses plain numpy, without Gmsh.
 - `geometry/generate.py` builds the Gmsh OpenCASCADE model as a single `fluid` volume. It sorts boundary surfaces into patches (`inlet outlet sides top ground building room_walls sashes`) by their position, sets the mesh size fields, and writes the mesh in MSH 2.2.
+- `geometry/surfaces.py` writes the solid parts (walls, roof, sashes) as `obstacle.stl` for snappyHexMesh, the default mesher (`mesh.mesher` in the config, case files in `cfd/templates/snappy/`). snappyHexMesh cuts it out of a block mesh. The Gmsh tetra mesh (`mesher: gmsh`) is still available.
 - `geometry/render.py` makes off-screen PyVista renders of that same Gmsh geometry, shown as a cut-away view with the roof removed. Several configs can be shown side by side.
 - `configs/examples/` holds one example case per layout. They are used for the README picture.
 - `configs/demo/` holds two randomly drawn demo cases; their pictures are in `docs/demo/`.
