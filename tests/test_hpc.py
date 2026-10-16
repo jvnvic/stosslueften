@@ -260,3 +260,20 @@ def test_case_busy_in_another_process_is_not_started_twice(tmp_path):
     finally:
         other.kill()
         other.wait()
+
+
+def test_show_summarises_runs_running_cases_failures_and_events(tmp_path):
+    from hpc.show import summary
+    from hpc.state import Run
+
+    now = time.time()
+    state = State()
+    state.runs["r"] = Run("r", "abc", 2, 4, 1, 45, 300, started=now - 3600)
+    state.cases["r_001"] = Case("r_001", "r", "x", "same_wall", status="running", attempts=1, started=now - 1800)
+    state.cases["r_002"] = Case("r_002", "r", "x", "opposite_walls", status="done")
+    state.cases["r_003"] = Case("r_003", "r", "x", "adjacent_walls", status="failed", attempts=2, error="Case failed: x")
+    state.event("runner started")
+    text = summary(state, tmp_path, updated=now - 30, now=now)
+    assert "r               3 cases   done 1  running 1  failed 1" in text
+    assert "running  r_001" in text and "same_wall" in text and "30 min" in text
+    assert "FAILED   r_003            Case failed: x" in text and "runner started" in text

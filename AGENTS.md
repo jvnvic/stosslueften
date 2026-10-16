@@ -74,6 +74,7 @@ python -m sweeps.queues configs/sweep/train-v1 --first 15    # split cases into 
 bash hpc/setup/check_machine.sh                              # simulation PC: readiness check (guide: hpc/setup/README.md)
 python -m hpc.setup.compare_reference                        # simulation PC: reference results vs the laptop
 bash hpc/setup/install_runner.sh                             # simulation PC: install/update the runner service (hpc/README.md)
+python -m hpc.show --watch                                   # simulation PC: runner summary from ~/hpc/state.json
 python -m hpc.runner --home /tmp/hpc --fake --once           # one runner round with fake cases (no OpenFOAM)
 ```
 

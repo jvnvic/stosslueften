@@ -539,3 +539,9 @@ Template:
   - Changed from the plan: Pages deploys from the branch, not an Actions workflow, so status is published every ~6 min.
   - Mistake: a broken wait loop on my side left the laptop idle for about 6 minutes after the test had finished. Daniel noticed.
 - **Human decisions / review:** Daniel asked for the sweep generator and the HPC runner with web interface.
+
+## 2026-10-16 — Terminal summary of the runner
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:** Added `python -m hpc.show [--watch]`, a short summary of `~/hpc/state.json` for a terminal on the simulation PC: cases per status and run, each running case with stage and progress, failures, and the latest events. Added a test and documented it in `hpc/README.md`.
+- **Human decisions / review:** Daniel wanted to watch the runner's state file on the simulation PC and asked for a command instead of a long one-liner.

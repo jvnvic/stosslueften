@@ -80,7 +80,8 @@ A run uses the code of `main` at the moment it starts. All its cases keep that c
 ## On the PC, if needed
 
 ```bash
-journalctl -u stosslueften-runner -f            # what the runner does right now
+.venv/bin/python -m hpc.show --watch            # summary: cases per status, running cases, failures, events
+journalctl -u stosslueften-runner -f            # the service log (start-up messages and errors)
 sudo systemctl restart stosslueften-runner      # restart it; running cases continue and are adopted
 sudo systemctl stop stosslueften-runner         # stop the runner (running cases continue on their own)
 cat ~/hpc/state.json                            # its memory: every case and its status
@@ -110,6 +111,7 @@ less ~/stosslueften/cases/<case>.runner.log     # output of one case
 | `status.py` | Builds `status.json` for the dashboard |
 | `gitsync.py` | Fetching `main`, publishing the two branches |
 | `notify.py` | GitHub issue notifications |
+| `show.py` | Short summary of the state for a terminal (`python -m hpc.show --watch`) |
 | `fake_case.py` | Stand-in for `cfd.run_case` in tests |
 | `site/` | The dashboard: `index.html`, `style.css`, `app.js` |
 | `setup/` | Machine setup (phase 0) and the runner service |
