@@ -1,0 +1,12 @@
+# Training set of the dataset (DATASET_PLAN.md §2, decisions of 2026-10-16).
+# Generate the case files with:  python -m sweeps.generate configs/sweep/train-v1/spec.yaml
+run_id: train-v1
+split: train                # train | test
+n_cases: 150                # split evenly over the three layouts: 50 same-wall (method B) cases
+seed: 20261016              # the test set has its own seed
+base_config: configs/default.yaml   # fixed setup: room, mesh, solver settings
+turn_share: 0.5             # per window: share of turned (vs tilted) windows -> each mode pair ~25 %
+turn_angle_deg: [15, 90]
+tilt_angle_deg: 6
+hinge: sampled              # sampled | left | right
+wind_speed_ms: [1, 5]

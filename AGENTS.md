@@ -69,11 +69,13 @@ python -m analysis.monitor                                    # live progress wi
 python -m cfd.queue configs/a.yaml configs/b.yaml             # run cases one after another (start detached)
 python -m cfd.queue --transient --procs 4 configs/a.yaml      # option-B comparison runs (steady flow first if missing)
 python -m cfd.queue --resume cases/queues/<name>.json         # continue an interrupted queue
+python -m sweeps.generate configs/sweep/train-v1/spec.yaml   # draw the cases of a run (any OS)
+python -m sweeps.queues configs/sweep/train-v1 --first 15    # split cases into 2 balanced cfd.queue lists (--skip-done for the rest)
 bash hpc/setup/check_machine.sh                              # simulation PC: readiness check (guide: hpc/setup/README.md)
 python -m hpc.setup.compare_reference                        # simulation PC: reference results vs the laptop
 ```
 
-Not implemented yet (PLAN.md §4): the transient comparison run (benchmark option B) and `python -m sweeps.run_sweep`.
+Not implemented yet: the dataset writer (`python -m sweeps.dataset`, DATASET_PLAN.md §3) and the HPC runner (`python -m hpc.runner`, HPC_PLAN.md §11).
 
 - Gmsh meshes must be written in MSH 2.2 format (`Mesh.MshFileVersion = 2.2`) for `gmshToFoam`.
 - In ParaView, use its built-in OpenFOAM reader. The AUR package's reader plugin does not build.
@@ -107,6 +109,8 @@ Not implemented yet (PLAN.md §4): the transient comparison run (benchmark optio
   - Light: `TailTable` reads only newly appended lines and plots are thinned. Each panel is wrapped so that errors cannot stop the window.
 - `cfd/templates/transient/` is the option-B comparison stage: pimpleFoam starting from the steady solution, with a spin-up and then the tracer via the `scalarTransport` function object. The runner uses `mpirun --bind-to none` so that two cases can share the CPU.
 - `analysis/visualize.py` reads a solved case with PyVista. It renders top views at window height (air speed with streamlines, or the tracer), the mesh (cuts coloured by cell size and the surface grid), and plots the replacement curve with matplotlib.
+- `sweeps/generate.py` draws a run's cases from `configs/sweep/<run>/spec.yaml`: a Latin hypercube per layout, interleaved layouts, position redraws for overlapping windows. It writes the case files, `manifest.json` and `coverage.png`. `sweeps/queues.py` splits a run into balanced `cfd.queue` lists, with same-wall (B) cases first.
+- `configs/sweep/train-v1/` (150 cases) and `configs/sweep/test-v1/` (30 cases) are the dataset runs (decided 2026-10-16).
 - `hpc/setup/` prepares the simulation PC (HPC_PLAN.md phase 0): the guide `README.md`, the install and Windows scripts, the machine check, the reference check against the laptop (`reference.json`) and the throughput measurement.
 - `tests/`: pytest.
 - `docs/overview/overview.tex` is a one-page overview for the course (PDF next to it, `latexmk -pdf`). Update it when the status changes significantly.

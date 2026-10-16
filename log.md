@@ -495,3 +495,22 @@ Template:
   - **B's own scatter** is about ±5 % (window moved 1 cm, simulation PC, after the fixes).
   - Documented in PLAN.md §5: same-wall rows carry about ±15 % uncertainty. Decision M1 stays.
 - **Human decisions / review:** Daniel asked for the results in the morning; the fixes were part of the agreed plan.
+
+## 2026-10-16 — Decisions approved, sweep generator built, runs drawn
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Recorded the approved decisions in DATASET_PLAN.md §5 and PLAN.md §2–3:
+    - wind and hinge side sampled;
+    - 150 + 30 cases;
+    - tracer step 0.2 s;
+    - the final CSV columns, now frozen (M2);
+    - about ±15 % uncertainty for same-wall rows.
+  - Built `sweeps/generate.py`:
+    - a Latin hypercube per layout from a spec file;
+    - interleaved layouts, so the first N cases stay balanced;
+    - position redraws for overlapping windows or colliding sashes;
+    - manifest and coverage plot.
+  - Built `sweeps/queues.py`, which splits a run into balanced `cfd.queue` lists, with same-wall cases first. Added 8 tests.
+  - Drew `train-v1` (150 cases) and `test-v1` (30 cases). The mode pairs are spread 35/40/40/35. Same-wall cases needed 71 position redraws, because two windows barely fit on one wall.
+- **Human decisions / review:** Daniel approved all recommendations of DATASET_PLAN.md §5 and the same-wall uncertainty.

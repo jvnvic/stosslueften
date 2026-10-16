@@ -28,26 +28,31 @@ Agreed 2026-10-14. Deadline: less than 6 weeks away; the exact date is still to 
 | `window1_x_m`, `window2_x_m` | 0.7 m to (wall length − 0.7 m), keeping 0.2 m clear of the corners |
 | `window1_mode`, `window2_mode` | `turn` or `tilt`, chosen independently (4 combinations) |
 | `window1_angle_deg`, `window2_angle_deg` | `turn`: 15–90°. `tilt`: fixed at 6°. |
-| `window1_hinge`, `window2_hinge` | `left` or `right`; only matters in turn mode. Whether the sweep samples it or keeps it fixed is decided after the benchmark. |
+| `window1_hinge`, `window2_hinge` | `left` or `right`, sampled (decided 2026-10-16); only matters in turn mode. In the CSV a tilted window has `none`. |
 | `wind_speed_ms` | 1–5 m/s |
 
-**Sampling:** Latin hypercube (`scipy.stats.qmc`) with fixed seeds. We aim for about 150 training runs plus a separately drawn test set of about 30 runs. The week-1 benchmark sets the final count.
+**Sampling:** a Latin hypercube (`scipy.stats.qmc`) per layout, with fixed seeds. 150 training runs and a separately drawn test set of 30 runs (decided 2026-10-16), so 60 same-wall (method B) cases. Wind speed is sampled, not derived by scaling. About 25 % of the cases fall on each mode pair. Details are in DATASET_PLAN.md §2.
 
 **Rejected samples:** a sample is redrawn if windows overlap (less than 0.2 m between frames) or if sashes collide in plan view. The generator logs how many were redrawn.
 
-## 3. Outputs (the dataset contract; columns are frozen at M2)
+## 3. Outputs (the dataset contract; **columns frozen 2026-10-16, M2**)
 
-`results/summary.csv` has one row per run. Each row contains `case_id`, `split` (train or test) and all the inputs above, plus:
+`results/summary.csv` has one row per case, in this column order:
 
 | Column | Meaning |
 |---|---|
-| `status`, `error_message` | Whether the run succeeded, and why not if it failed |
+| `case_id`, `run_id`, `split` | Identification; `split` is `train` or `test` |
+| `layout`, `window1_x_m`, `window1_mode`, `window1_angle_deg`, `window1_hinge`, `window2_x_m`, `window2_mode`, `window2_angle_deg`, `window2_hinge`, `wind_speed_ms` | The inputs (§2). The hinge of a tilted window is `none`. |
+| `status`, `error_message` | `ok` or `failed`, and why. Failed cases keep their row with empty results. |
+| `method` | `A` (steady flow + tracer) or `B` (time-varying flow): B for same-wall cases, A otherwise (§5, decision M1) |
 | `fresh_frac_030s` … `fresh_frac_600s` | 20 points of the curve. fresh_fraction = 1 − room-average tracer. |
-| `t90_s` | First time fresh_fraction ≥ 0.9. **Left empty** if never reached. |
+| `t90_s` | First time fresh_fraction ≥ 0.9. **Left empty** if never reached within 600 s. |
 | `tau_s` | Time constant τ from fitting fresh_fraction ≈ 1 − exp(−t/τ). Always defined. |
-| `airflow_m3h` | Mean volumetric inflow through both window openings (inflow equals outflow) |
-| `method` | `A` (steady flow + tracer) or `B` (time-varying flow). B for same-wall cases, A otherwise (§5, decision M1). |
-| `n_cells`, `runtime_s`, `git_commit` | Reproducibility information |
+| `airflow_m3h` | Inflow through both window openings, from the exact face fluxes; also counts air that enters and leaves through the same window |
+| `steady_t90_s`, `steady_tau_s` | Method A's values, also for method B rows (for the A-vs-B comparison) |
+| `n_cells`, `runtime_s`, `machine`, `openfoam_version`, `git_commit`, `finished_utc` | Reproducibility information |
+
+**Uncertainty** (approved 2026-10-16): about ±3 % for method A rows (cross-ventilation) and about ±15 % for method B rows (same wall), see §5.
 
 `results/timeseries/<case_id>.csv` holds `time_s, fresh_fraction` every 1 s. Logs and configs stay in `cases/<case_id>/`, which is not committed.
 

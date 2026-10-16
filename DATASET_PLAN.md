@@ -1,6 +1,6 @@
 # Dataset plan: sweep generator and dataset writer
 
-Status: **proposal, 2026-10-15. Nothing is built yet.** The decisions marked *(decide)* are collected in §5. The background is in PLAN.md §2–3 (inputs and columns) and §5 (method by layout).
+Status: **decisions approved 2026-10-16** (§5). The two fixes (§1) are in `main`; the sweep generator (§2) is built and has drawn `train-v1` (150 cases) and `test-v1` (30 cases); the dataset writer (§3) follows. The background is in PLAN.md §2–3 (inputs and columns) and §5 (method by layout).
 
 The chain from inputs to the CSV:
 
@@ -144,7 +144,7 @@ wind_speed_ms: [1, 5]       # range, or one value if wind is handled by scaling 
 
 The HPC runner (HPC_PLAN.md §11) is built alongside and takes over from the test set or the reruns. The data does not wait for it.
 
-## 5. Decisions needed *(decide)*
+## 5. Decisions (approved by Daniel, 2026-10-16: all recommendations)
 
 1. **Wind speed: sampled (recommended) or scaled.**
    - **Sampled:** 1–5 m/s, as in PLAN.md §2. Simple and honest; no extrapolation.
