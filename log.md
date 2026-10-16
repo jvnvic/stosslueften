@@ -514,3 +514,28 @@ Template:
   - Built `sweeps/queues.py`, which splits a run into balanced `cfd.queue` lists, with same-wall cases first. Added 8 tests.
   - Drew `train-v1` (150 cases) and `test-v1` (30 cases). The mode pairs are spread 35/40/40/35. Same-wall cases needed 71 position redraws, because two windows barely fit on one wall.
 - **Human decisions / review:** Daniel approved all recommendations of DATASET_PLAN.md §5 and the same-wall uncertainty.
+
+## 2026-10-16 — Remote sweep runner and dashboard built
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:** Built the runner from HPC_PLAN.md §11 (`hpc/`).
+  - **Control:** declarative `hpc/control.yaml` and run files on `main`, checked with clear messages; skip/retry apply once per change.
+  - **Cases:**
+    - each case runs as `cfd.run_case` with the run's pinned code (git worktree, `python -P`), in its own process group;
+    - same-wall (B) cases first; one retry; timeouts;
+    - adopts cases that still run after a restart and finished cases (e.g. the pilot); waits for cases another process is working on;
+    - method B resumes from its save point after a reboot;
+    - self-pause when the disk is nearly full.
+  - **Publishing:**
+    - `hpc-status`: one force-pushed commit with `status.json`, the latest pictures and the dashboard;
+    - `hpc-results`: per case config, summary, curves and pictures;
+    - GitHub issue notifications, batched.
+  - **Dashboard** (`hpc/site/`): plain HTML/CSS/JS in the monitor's dark look:
+    - state badge and offline detection, run progress with finish estimate, running cases with sparklines;
+    - per-thread CPU, the latest case's pictures, τ-vs-wind results chart with hover, recent cases, failures with log tails, events.
+  - **Service:** systemd unit with `KillMode=process`, so running cases survive runner restarts. Remote self-update when paused and idle. The local monitor shows the runner like a queue.
+  - **Tests:** 12 tests with fake cases and a local bare repository: whole run, retry, pause/stop, adopt after restart, timeout, adopting finished cases, broken control file, busy case.
+  - **Real test:** a two-case OpenFOAM run (one A, one B) on the laptop through the real runner, with pictures and both branches published.
+  - Changed from the plan: Pages deploys from the branch, not an Actions workflow, so status is published every ~6 min.
+  - Mistake: a broken wait loop on my side left the laptop idle for about 6 minutes after the test had finished. Daniel noticed.
+- **Human decisions / review:** Daniel asked for the sweep generator and the HPC runner with web interface.

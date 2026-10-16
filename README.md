@@ -17,6 +17,7 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | Solver benchmark: comparison with a fully transient run | ✅ decided: fast method for windows on different walls, exact method for the same wall (see below) |
 | Mesh study | ✅ snappyHexMesh, medium cell sizes (see PLAN.md §6) |
 | Parameter sweep, dataset | 🟡 inputs drawn: 150 training + 30 test cases (`configs/sweep/`); pilot next |
+| Remote runner and dashboard for the simulation PC | ✅ built and tested ([hpc/README.md](hpc/README.md)); dashboard at https://jvnvic.github.io/stosslueften/ once Pages is switched on |
 
 ## First result
 
@@ -167,7 +168,7 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 | `docs/overview/` | One-page project overview (LaTeX and PDF) |
 | `docs/demo/` | Pictures of two randomly drawn demo cases (`configs/demo/`): setup, streamlines, mesh |
 | `tests/` | Automated tests |
-| `hpc/` | Remote sweep runner ([HPC_PLAN.md](HPC_PLAN.md)); `hpc/setup/` sets up the simulation PC |
+| `hpc/` | Remote sweep runner and dashboard ([hpc/README.md](hpc/README.md)); `hpc/setup/` sets up the simulation PC |
 | `cases/` | Generated simulation folders (not in git) |
 | `results/` | The dataset (planned) |
 

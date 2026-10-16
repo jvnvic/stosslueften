@@ -10,7 +10,7 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 - [PLAN.md](PLAN.md) holds the agreed decisions, dataset columns and schedule. **Read it first.**
 - [VENTILATION_CFD_PROJECT.md](VENTILATION_CFD_PROJECT.md) is the original background spec. PLAN.md wins wherever they differ.
 - [DATASET_PLAN.md](DATASET_PLAN.md) plans the sweep generator and the dataset writer, including the two fixes needed before the real runs.
-- [HPC_PLAN.md](HPC_PLAN.md) plans the remote sweep runner (Windows/WSL2 PC, control and status through GitHub). Phase 0, the machine setup, is prepared in `hpc/setup/`; the runner itself is not built yet.
+- [HPC_PLAN.md](HPC_PLAN.md) plans the remote sweep runner (Windows/WSL2 PC, control and status through GitHub). It is built (`hpc/`, operations guide `hpc/README.md`); the pilot on the simulation PC is next.
 - Status (2026-10-14): the whole single-case pipeline works and is verified (PLAN.md §5–6): snappyHexMesh mesh, steady flow, frozen tracer, metrics, pictures, run queue and live monitor. **Decision M1 (2026-10-15): method B (transient) for same-wall cases, A (steady + tracer) otherwise**; `cfd.run_case` applies it automatically. **Next: the checks before the sweep, then the sweep (input sampling, `cfd.queue`, `results/summary.csv`)**; see PLAN.md §9.
 - Deadline: less than 6 weeks from 2026-10-14.
 
@@ -73,9 +73,11 @@ python -m sweeps.generate configs/sweep/train-v1/spec.yaml   # draw the cases of
 python -m sweeps.queues configs/sweep/train-v1 --first 15    # split cases into 2 balanced cfd.queue lists (--skip-done for the rest)
 bash hpc/setup/check_machine.sh                              # simulation PC: readiness check (guide: hpc/setup/README.md)
 python -m hpc.setup.compare_reference                        # simulation PC: reference results vs the laptop
+bash hpc/setup/install_runner.sh                             # simulation PC: install/update the runner service (hpc/README.md)
+python -m hpc.runner --home /tmp/hpc --fake --once           # one runner round with fake cases (no OpenFOAM)
 ```
 
-Not implemented yet: the dataset writer (`python -m sweeps.dataset`, DATASET_PLAN.md §3) and the HPC runner (`python -m hpc.runner`, HPC_PLAN.md §11).
+Not implemented yet: the dataset writer (`python -m sweeps.dataset`, DATASET_PLAN.md §3).
 
 - Gmsh meshes must be written in MSH 2.2 format (`Mesh.MshFileVersion = 2.2`) for `gmshToFoam`.
 - In ParaView, use its built-in OpenFOAM reader. The AUR package's reader plugin does not build.
@@ -111,6 +113,11 @@ Not implemented yet: the dataset writer (`python -m sweeps.dataset`, DATASET_PLA
 - `analysis/visualize.py` reads a solved case with PyVista. It renders top views at window height (air speed with streamlines, or the tracer), the mesh (cuts coloured by cell size and the surface grid), and plots the replacement curve with matplotlib.
 - `sweeps/generate.py` draws a run's cases from `configs/sweep/<run>/spec.yaml`: a Latin hypercube per layout, interleaved layouts, position redraws for overlapping windows. It writes the case files, `manifest.json` and `coverage.png`. `sweeps/queues.py` splits a run into balanced `cfd.queue` lists, with same-wall (B) cases first.
 - `configs/sweep/train-v1/` (150 cases) and `configs/sweep/test-v1/` (30 cases) are the dataset runs (decided 2026-10-16).
+- `hpc/` is the sweep runner for the simulation PC (HPC_PLAN.md, operations: `hpc/README.md`).
+  - Control comes from `hpc/control.yaml` and `hpc/runs/*.yaml` on `main`. The loop is in `runner.py`, its memory in `~/hpc/state.json` (`state.py`), and cases are handled by `jobs.py`.
+  - Each case runs as `python -P -m cfd.run_case` with the run's pinned code on PYTHONPATH, in its own process group.
+  - The runner publishes `status.json` and the dashboard (`site/`) to the `hpc-status` branch (one force-pushed commit, GitHub Pages), and results to `hpc-results` (`results.py`, `gitsync.py`). Notifications go through GitHub issues (`notify.py`).
+  - Tests use `fake_case.py` and a local bare repository (`tests/test_hpc.py`).
 - `hpc/setup/` prepares the simulation PC (HPC_PLAN.md phase 0): the guide `README.md`, the install and Windows scripts, the machine check, the reference check against the laptop (`reference.json`) and the throughput measurement.
 - `tests/`: pytest.
 - `docs/overview/overview.tex` is a one-page overview for the course (PDF next to it, `latexmk -pdf`). Update it when the status changes significantly.

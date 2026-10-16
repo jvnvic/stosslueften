@@ -1,6 +1,12 @@
 # HPC runner: remote-controlled sweep (plan)
 
-Status: **plan agreed 2026-10-15.** Phase 0 (machine setup) is prepared in [hpc/setup/](hpc/setup/README.md); the runner itself is not built yet. The decisions are in §10.
+Status (2026-10-16): **phases 0–3 are built and tested.**
+- Phase 0: the machine setup ([hpc/setup/](hpc/setup/README.md)), done on the PC.
+- Phases 1–3: the runner, the git channel and the dashboard. Tested with fake cases, a local stand-in for GitHub, and a real two-case OpenFOAM run on the laptop.
+- Next is phase 4, the pilot on the simulation PC. Operations guide: [hpc/README.md](hpc/README.md).
+- The decisions are in §10.
+
+**Change from this plan:** the dashboard is published from the `hpc-status` branch directly ("Deploy from a branch"), not by an Actions workflow. That avoids maintaining third-party action versions. The price is at most ~10 Pages builds per hour, so the status is published every ~6 minutes; the runner still reacts to control changes within a minute.
 
 ## 1. Goal
 
