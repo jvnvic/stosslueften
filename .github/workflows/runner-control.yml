@@ -1,0 +1,63 @@
+# Changes hpc/control.yaml for the sweep runner on the simulation PC (hpc/README.md).
+# Started by the dashboard's buttons, or by hand: GitHub app or github.com -> Actions -> Runner control -> Run workflow.
+# Uses no third-party actions: plain git and Python on GitHub's runner.
+name: Runner control
+
+on:
+  workflow_dispatch:
+    inputs:
+      state:
+        description: "run, pause (running cases finish) or stop (running cases are aborted and queued again)"
+        type: choice
+        options: [run, pause, stop]
+        required: true
+        default: pause
+      runs:
+        description: "runs in this order, e.g. train-v1 test-v1 (empty: keep the current ones, - : none)"
+        type: string
+        required: false
+        default: ""
+      retry:
+        description: "failed case ids to run again, e.g. train-v1_017 (empty: none)"
+        type: string
+        required: false
+        default: ""
+      skip:
+        description: "case ids to leave out (empty: none)"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: runner-control
+  cancel-in-progress: false
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Change hpc/control.yaml on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATE: ${{ inputs.state }}
+          RUNS: ${{ inputs.runs }}
+          RETRY: ${{ inputs.retry }}
+          SKIP: ${{ inputs.skip }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          git clone --quiet --depth 1 --branch main "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
+          cd repo
+          python3 -m venv /tmp/venv && /tmp/venv/bin/pip install --quiet pyyaml
+          /tmp/venv/bin/python -m hpc.control_edit --state "$STATE" --runs "$RUNS" --retry "$RETRY" --skip "$SKIP"
+          if git diff --quiet; then echo "hpc/control.yaml unchanged"; exit 0; fi
+          git config user.name "${ACTOR} (runner control)"
+          git config user.email "${ACTOR}@users.noreply.github.com"
+          message="control: state ${STATE}${RUNS:+, runs ${RUNS}}${RETRY:+, retry ${RETRY}}${SKIP:+, skip ${SKIP}} (by ${ACTOR})"
+          git commit --quiet -am "$message"
+          git push --quiet origin main || { git pull --quiet --rebase origin main && git push --quiet origin main; }
+          echo "$message"

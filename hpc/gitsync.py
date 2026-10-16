@@ -82,6 +82,12 @@ class Repo:
             git("worktree", "add", "--detach", str(dest), commit, cwd=self.path)
         return dest
 
+    def changed_files(self, a: str, b: str) -> list[str]:
+        try:
+            return git("diff", "--name-only", a, b, cwd=self.path).split()
+        except GitError:
+            return []
+
     def update(self, ref: str) -> bool:
         """Fast-forward the runner's own checkout to `ref` (remote runner update). False if not possible."""
         try:

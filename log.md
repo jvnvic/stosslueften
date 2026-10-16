@@ -545,3 +545,22 @@ Template:
 - **AI tool / model:** Claude Code (Claude Opus 5.5)
 - **What the AI did:** Added `python -m hpc.show [--watch]`, a short summary of `~/hpc/state.json` for a terminal on the simulation PC: cases per status and run, each running case with stage and progress, failures, and the latest events. Added a test and documented it in `hpc/README.md`.
 - **Human decisions / review:** Daniel wanted to watch the runner's state file on the simulation PC and asked for a command instead of a long one-liner.
+
+## 2026-10-16 — Runner control from the dashboard
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Added a Control panel to the dashboard:
+    - Run / Pause / Stop, run selection, retry for failed cases, skip;
+    - a pending-request indicator until the runner confirms;
+    - a confirmation question before Stop.
+  - The buttons start a new workflow, `.github/workflows/runner-control.yml`.
+    - It edits `hpc/control.yaml` through `hpc/control_edit.py`, which checks every value, and commits it to `main`.
+    - It uses no third-party actions, and the inputs are passed as environment variables, so they cannot inject commands.
+  - **The token:** stored only in the browser, and needs only *Actions: Read and write*, so it cannot change code. Without a token, the same workflow can be started from the GitHub app.
+  - Runner changes:
+    - `retry`/`skip` act only on newly added entries;
+    - status is published right after a control change;
+    - changes without Python files (control commits, dashboard files) are applied without a restart.
+  - Added 3 tests (16 runner tests pass). Checked the panel at desktop and phone width in a headless browser.
+- **Human decisions / review:** Daniel found editing `control.yaml` from the phone too clumsy and asked for control on the dashboard.

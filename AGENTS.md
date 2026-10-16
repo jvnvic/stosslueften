@@ -119,6 +119,7 @@ Not implemented yet: the dataset writer (`python -m sweeps.dataset`, DATASET_PLA
   - Each case runs as `python -P -m cfd.run_case` with the run's pinned code on PYTHONPATH, in its own process group.
   - The runner publishes `status.json` and the dashboard (`site/`) to the `hpc-status` branch (one force-pushed commit, GitHub Pages), and results to `hpc-results` (`results.py`, `gitsync.py`). Notifications go through GitHub issues (`notify.py`).
   - Tests use `fake_case.py` and a local bare repository (`tests/test_hpc.py`).
+  - The dashboard's Control panel starts the workflow `.github/workflows/runner-control.yml` (GitHub API, a token with *Actions: write* stored in the browser). The workflow edits `hpc/control.yaml` via `hpc/control_edit.py` and commits it to `main`. It uses no third-party actions.
 - `hpc/setup/` prepares the simulation PC (HPC_PLAN.md phase 0): the guide `README.md`, the install and Windows scripts, the machine check, the reference check against the laptop (`reference.json`) and the throughput measurement.
 - `tests/`: pytest.
 - `docs/overview/overview.tex` is a one-page overview for the course (PDF next to it, `latexmk -pdf`). Update it when the status changes significantly.

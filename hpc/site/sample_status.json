@@ -14,7 +14,12 @@
   "message": null,
   "offline_since": null,
   "code": "8f8817e",
-  "started": 1792094963
+  "started": 1792094963,
+  "repo": "jvnvic/stosslueften",
+  "available_runs": [
+   "test-v1",
+   "train-v1"
+  ]
  },
  "machine": {
   "cpu": [

@@ -19,6 +19,36 @@
   <section id="runs" class="panel wide"></section>
 
   <section class="panel wide">
+    <h2>Control</h2>
+    <form id="control" class="control" autocomplete="off">
+      <div class="row"><span class="label">State</span>
+        <div class="seg" role="radiogroup" aria-label="runner state">
+          <label><input type="radio" name="state" value="run"><span>Run</span></label>
+          <label><input type="radio" name="state" value="pause"><span>Pause</span></label>
+          <label><input type="radio" name="state" value="stop"><span>Stop</span></label>
+        </div>
+        <span id="state-help" class="dim small"></span>
+      </div>
+      <div class="row"><span class="label">Runs</span><div id="run-choices" class="choices"></div></div>
+      <div class="row" id="retry-row" hidden><span class="label">Retry</span><div id="retry-choices" class="choices"></div></div>
+      <div class="row"><span class="label">Skip</span>
+        <input id="skip" type="text" placeholder="case ids, e.g. train-v1_017" spellcheck="false"></div>
+      <div class="row"><span class="label"></span>
+        <button id="apply" type="submit">Apply</button>
+        <span id="control-msg" class="small"></span></div>
+    </form>
+    <details class="token">
+      <summary id="token-state">Buttons need a GitHub token on this device</summary>
+      <p class="small dim">A fine-grained token for this repository with only <b>Actions: Read and write</b> (it can start the
+        "Runner control" workflow, nothing else). It stays in this browser. How to create one: <code>hpc/README.md</code>.
+        Without a token, Apply opens the workflow form on GitHub instead.</p>
+      <div class="row"><input id="token" type="password" placeholder="github_pat_…" spellcheck="false">
+        <button id="token-save" type="button">Save</button>
+        <button id="token-forget" type="button">Forget</button></div>
+    </details>
+  </section>
+
+  <section class="panel wide">
     <h2>Running cases</h2>
     <div id="running" class="cards"></div>
   </section>

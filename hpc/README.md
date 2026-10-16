@@ -1,9 +1,9 @@
 # Sweep runner on the simulation PC
 
-The runner runs the dataset sweep on the Windows/WSL2 simulation PC. You control it from anywhere by editing one file on GitHub. You watch it on a dashboard (GitHub Pages) and get notifications in the GitHub app. The design is in [HPC_PLAN.md](../HPC_PLAN.md).
+The runner runs the dataset sweep on the Windows/WSL2 simulation PC. You control it from anywhere with the buttons on its dashboard (GitHub Pages), and get notifications in the GitHub app. The design is in [HPC_PLAN.md](../HPC_PLAN.md).
 
 ```
-you: edit hpc/control.yaml on main ──▶ runner (every minute): start / pause / stop cases
+dashboard buttons ──▶ workflow "Runner control" ──▶ hpc/control.yaml on main ──▶ runner (every minute)
 dashboard (GitHub Pages)  ◀── branch hpc-status   (every ~6 min: status.json, pictures)
 dataset writer            ◀── branch hpc-results  (results of every finished case)
 GitHub app                ◀── one issue per run   (failures, self-pauses, run finished)
@@ -24,10 +24,29 @@ GitHub app                ◀── one issue per run   (failures, self-pauses, 
 3. **Switch on GitHub Pages.** The runner's first status creates the branch `hpc-status` after about 1 minute. Then go to *Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch `hpc-status`, folder `/ (root)` → Save*.
    - The dashboard appears at **https://jvnvic.github.io/stosslueften/** after 1–2 minutes.
 4. **Optional, notifications:** add the issue token ([setup/README.md](setup/README.md) step 9), then run `sudo systemctl restart stosslueften-runner`.
+5. **Buttons on the dashboard:** create a token once and save it on each device you use (phone, laptop):
+   1. On GitHub: *your picture → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token*.
+   2. Name `stosslueften-dashboard`, expiration 90 days, *Only select repositories → jvnvic/stosslueften*, *Permissions → Repository → **Actions: Read and write***. Nothing else.
+   3. On the dashboard, open *Buttons need a GitHub token on this device*, paste it, and press *Save*.
+
+   This token can only start the "Runner control" workflow (and see or cancel workflow runs). It cannot change code or read anything secret. It is stored only in that browser; *Forget* removes it.
 
 ## Controlling it
 
-Edit [control.yaml](control.yaml) on `main`: in the GitHub web editor (also on the phone) or with `git push`.
+**From the dashboard** (Control panel):
+1. Choose Run / Pause / Stop, tick the runs and optionally failed cases to retry, and enter case ids to skip.
+2. Press *Apply*.
+
+What happens then:
+- The workflow changes `hpc/control.yaml` on `main` (~30 s). The runner applies it within a minute and publishes right away.
+- The panel shows the request until the dashboard confirms it, usually after 1–3 minutes.
+- *Stop* asks for confirmation.
+
+**Without a token** (any device where you are logged in to GitHub):
+- In the GitHub app or on github.com, go to *Actions → Runner control → Run workflow* and fill in the same fields.
+- On the dashboard, *Apply* opens that page when no token is saved.
+
+**By hand:** edit [control.yaml](control.yaml) and push. The table shows what each setting does:
 
 | You want to | Set in `hpc/control.yaml` |
 |---|---|
@@ -40,8 +59,8 @@ Edit [control.yaml](control.yaml) on `main`: in the GitHub web editor (also on t
 | Update the runner's code | push the new code to `main`, set `state: pause`. When no case runs, the runner updates itself and restarts. Then `state: run` again. |
 
 **Timing**
-- The runner reads the file within a minute. The dashboard shows the result with its next update, which comes every ~6 minutes, because GitHub Pages rebuilds a branch at most about 10 times per hour.
-- `skip` and `retry` apply once per change of the file, so you don't need to empty those lists afterwards.
+- The runner reads the file within a minute and, after a change, publishes its status right away. Otherwise the dashboard updates every ~6 minutes, because GitHub Pages rebuilds a branch at most about 10 times per hour.
+- `skip` and `retry` act only on case ids that are new in the list. Later changes do not repeat them. To retry the same case again later, remove it and add it again; the dashboard and the workflow do that by themselves.
 
 **A new run**
 1. Draw its cases: `python -m sweeps.generate configs/sweep/<run>/spec.yaml`.
@@ -112,6 +131,7 @@ less ~/stosslueften/cases/<case>.runner.log     # output of one case
 | `gitsync.py` | Fetching `main`, publishing the two branches |
 | `notify.py` | GitHub issue notifications |
 | `show.py` | Short summary of the state for a terminal (`python -m hpc.show --watch`) |
+| `control_edit.py` | Changes `control.yaml` for the workflow `.github/workflows/runner-control.yml` (the dashboard's buttons) |
 | `fake_case.py` | Stand-in for `cfd.run_case` in tests |
 | `site/` | The dashboard: `index.html`, `style.css`, `app.js` |
 | `setup/` | Machine setup (phase 0) and the runner service |

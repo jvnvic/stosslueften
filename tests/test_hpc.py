@@ -277,3 +277,51 @@ def test_show_summarises_runs_running_cases_failures_and_events(tmp_path):
     assert "r               3 cases   done 1  running 1  failed 1" in text
     assert "running  r_001" in text and "same_wall" in text and "30 min" in text
     assert "FAILED   r_003            Case failed: x" in text and "runner started" in text
+
+
+def test_control_edit_checks_values_and_keeps_the_rest():
+    from hpc.control_edit import edit, render
+
+    text = "state: pause\nruns: [train-v1]\nretry: [old]\nrunner_ref: main\n"
+    known = {"train-v1", "test-v1"}
+    control = edit(text, "run", "", "", "", known)
+    assert (control.state, control.runs, control.retry) == ("run", ["train-v1"], [])  # runs kept, lists cleared
+    assert edit(text, "run", "train-v1 test-v1", "train-v1_017", "", known).runs == ["train-v1", "test-v1"]
+    assert edit(text, "pause", "-", "", "", known).runs == []
+    with pytest.raises(ControlError, match="no run file"):
+        edit(text, "run", "nope", "", "", known)
+    with pytest.raises(ControlError, match="not valid names"):
+        edit(text, "run", "", "x;rm -rf /", "", known)
+    assert parse_control(render(control)) == control  # what the runner reads back is the same
+
+
+def test_retry_acts_on_newly_added_entries_only(world, monkeypatch):
+    monkeypatch.setenv("HPC_FAKE_FAIL", "t_002")
+    repo = world["repo"]
+    runner = world["make_runner"]()
+    _run_until(runner, lambda: runner.state.runs.get("t") and runner.state.runs["t"].finished)
+    assert runner.state.cases["t_002"].status == "failed"
+    (repo / "hpc" / "control.yaml").write_text("state: pause\nruns: [t]\nretry: [t_002]\n")
+    _commit_all(repo, "retry t_002")
+    runner.tick()
+    assert runner.state.cases["t_002"].status == "pending"  # newly added: queued again
+    runner.state.cases["t_002"].status = "failed"  # suppose it failed again
+    (repo / "hpc" / "control.yaml").write_text("state: pause\nruns: [t]\nretry: [t_002]\nskip: []\n")
+    _commit_all(repo, "another change, same retry list")
+    runner.tick()
+    assert runner.state.cases["t_002"].status == "failed"  # not repeated by an unrelated change
+    data = runner.status_data()
+    assert "t" in data["runner"]["available_runs"] and data["runner"]["repo"]
+
+
+def test_runner_follows_non_python_changes_without_restart(world):
+    repo = world["repo"]
+    runner = world["make_runner"]()
+    head = runner.repo.head()
+    (repo / "hpc" / "control.yaml").write_text("state: run\nruns: [t]\nskip: [t_005]\n")
+    _commit_all(repo, "control only")
+    git("reset", "--quiet", "--hard", head, cwd=repo)  # the runner's checkout is behind main again
+    runner.sync_control()
+    runner.s.fake = False  # the update logic is switched off for fake runs; exercise it here
+    runner.maybe_update()  # no SystemExit: nothing the runner has loaded changes
+    assert runner.repo.head() != head

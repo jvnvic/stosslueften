@@ -6,6 +6,11 @@ Status (2026-10-16): **phases 0–3 are built and tested.**
 - Next is phase 4, the pilot on the simulation PC. Operations guide: [hpc/README.md](hpc/README.md).
 - The decisions are in §10.
 
+**Added 2026-10-16: control from the dashboard.**
+- Its buttons start the workflow `.github/workflows/runner-control.yml` through the GitHub API, with a token limited to *Actions: Read and write* that is stored only in the browser. The workflow changes `hpc/control.yaml` on `main`.
+- Without a token, the same workflow can be started in the GitHub app.
+- `control.yaml` stays the single source of truth, and every change is a commit.
+
 **Change from this plan:** the dashboard is published from the `hpc-status` branch directly ("Deploy from a branch"), not by an Actions workflow. That avoids maintaining third-party action versions. The price is at most ~10 Pages builds per hour, so the status is published every ~6 minutes; the runner still reacts to control changes within a minute.
 
 ## 1. Goal

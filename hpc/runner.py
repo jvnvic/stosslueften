@@ -72,7 +72,8 @@ class Runner:
         url = settings.remote or self.repo.remote_url()
         self.status_branch = Branch(settings.home / "status", url, "hpc-status", history=False)
         self.results_branch = Branch(settings.home / "results", url, "hpc-results", history=True)
-        self.notifier = notifier or Notifier(repo_slug(url))
+        self.slug = repo_slug(url)
+        self.notifier = notifier or Notifier(self.slug)
         self.control, self.specs = Control(), {}
         self.control_error: str | None = None
         self.offline_since: float | None = None
@@ -129,20 +130,23 @@ class Runner:
             self.state.control_hash = digest
             self.state.event(f"control: state {control.state}, runs {control.runs or 'none'}")
             self.apply_lists(control)
+            self.last_status = 0  # show the change on the dashboard with the next publish (this minute)
 
     def apply_lists(self, control: Control) -> None:
-        """skip and retry apply once per change of the control file."""
-        for case_id in control.skip:
+        """skip and retry act on newly added entries only, so a later change does not repeat them."""
+        previous = self.state.control_lists
+        for case_id in [c for c in control.skip if c not in previous["skip"]]:
             case = self.state.cases.get(case_id)
             if case and case.status == "pending":
                 case.status = "skipped"
                 self.state.event(f"{case_id}: skipped (control)")
-        for case_id in control.retry:
+        for case_id in [c for c in control.retry if c not in previous["retry"]]:
             case = self.state.cases.get(case_id)
             if case and case.status == "failed":
                 case.status, case.attempts, case.error = "pending", 0, None
                 self.state.event(f"{case_id}: queued again (control)")
                 self.reopen(case.run_id)
+        self.state.control_lists = {"retry": list(control.retry), "skip": list(control.skip)}
 
     def reopen(self, run_id: str) -> None:
         run = self.state.runs[run_id]
@@ -312,7 +316,8 @@ class Runner:
     def status_data(self) -> dict:
         runner = {"state": self.runner_state(), "control": self.control.state, "runs": self.control.runs,
                   "control_error": self.control_error, "message": self.self_paused,
-                  "offline_since": self.offline_since, "code": self.repo.head()[:7], "started": round(self.started)}
+                  "offline_since": self.offline_since, "code": self.repo.head()[:7], "started": round(self.started),
+                  "repo": self.slug, "available_runs": sorted(set(self.specs) | set(self.state.runs))}
         return status.build(self.state, self.jobs.cases_dir, runner, self.state.latest,
                             lambda c: self.jobs.log_tail(c, 40))
 
@@ -359,14 +364,22 @@ class Runner:
     # --- remote update ------------------------------------------------------------------------
 
     def maybe_update(self) -> None:
-        """runner_ref: when paused and idle, move to that code version and restart (systemd starts us again)."""
-        if self.control.state != "pause" or self.state.running() or self.s.fake:
+        """Follow runner_ref (normally main). Changes without Python files (control commits, dashboard
+        files) are applied right away; new runner code only when paused and idle, followed by a restart
+        (systemd starts the runner again)."""
+        if self.s.fake:
             return
         try:
             target = self.repo.resolve(self.control.runner_ref)
         except GitError:
             return
-        if target == self.repo.head():
+        head = self.repo.head()
+        if target == head:
+            return
+        if not any(f.endswith(".py") for f in self.repo.changed_files(head, target)):
+            self.repo.update(target)  # nothing the running runner has loaded changes
+            return
+        if self.control.state != "pause" or self.state.running():
             return
         old = self.repo.show("requirements.txt", "HEAD")
         if self.repo.show("requirements.txt", target) != old:

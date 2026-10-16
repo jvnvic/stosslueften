@@ -61,6 +61,7 @@ class State:
     events: list[dict] = field(default_factory=list)
     control_hash: str | None = None  # last applied control file, so skip/retry lists apply once per change
     latest: dict | None = None  # the last finished case with pictures, for the dashboard
+    control_lists: dict = field(default_factory=lambda: {"retry": [], "skip": []})  # last applied retry/skip
 
     def event(self, text: str) -> None:
         self.events.append({"t": round(time.time()), "text": text})
@@ -85,4 +86,5 @@ class State:
         data = json.loads(path.read_text())
         return cls(runs={k: Run(**v) for k, v in data["runs"].items()},
                    cases={k: Case(**v) for k, v in data["cases"].items()},
-                   events=data.get("events", []), control_hash=data.get("control_hash"), latest=data.get("latest"))
+                   events=data.get("events", []), control_hash=data.get("control_hash"), latest=data.get("latest"),
+                   control_lists=data.get("control_lists", {"retry": [], "skip": []}))

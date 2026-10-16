@@ -228,10 +228,126 @@ function renderEvents(s) {
   replace("events", s.events.map((e) => el("li", {}, el("time", {}, clock(e.t)), el("span", {}, e.text))));
 }
 
+// --- control: the dashboard's buttons start the "Runner control" workflow, which edits hpc/control.yaml ------
+const TOKEN_KEY = "stosslueften.token", REQUEST_KEY = "stosslueften.request";
+const STATE_HELP = { run: "start cases in free slots", pause: "running cases finish, no new ones start",
+  stop: "running cases are aborted and queued again" };
+let controlFilled = false;  // fill the form from the status once; afterwards keep what the user chose
+
+function store(key, value) {  // localStorage can be missing or blocked (private windows): never fail on it
+  try { value === null ? localStorage.removeItem(key) : localStorage.setItem(key, value); } catch (e) { /* ignore */ }
+}
+function stored(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+
+function workflowUrl(s) { return `https://github.com/${s.runner.repo}/actions/workflows/runner-control.yml`; }
+
+function message(text, kind = "") {
+  const box = document.getElementById("control-msg");
+  box.className = `small ${kind}`;
+  box.replaceChildren(...[text].flat());
+}
+
+function renderControl(s) {
+  const form = document.getElementById("control");
+  const current = s.runner.runs || [];
+  const order = [...current, ...(s.runner.available_runs || []).filter((r) => !current.includes(r))];
+  const failed = s.failures.filter((f) => f.status === "failed").map((f) => f.case_id);
+  if (!controlFilled) {
+    form.querySelector(`input[name=state][value="${s.runner.control}"]`)?.click();
+    controlFilled = true;
+  }
+  const checked = (box) => new Set([...document.querySelectorAll(`#${box} input:checked`)].map((i) => i.value));
+  const keepRuns = document.querySelector("#run-choices input") ? checked("run-choices") : new Set(current);
+  replace("run-choices", order.length ? order.map((r) => el("label", {},
+    Object.assign(el("input", { type: "checkbox", value: r }), { checked: keepRuns.has(r) }), " ", r))
+    : el("span", { class: "dim small" }, "no run files in hpc/runs/"));
+  const keepRetry = checked("retry-choices");
+  document.getElementById("retry-row").hidden = failed.length === 0;
+  replace("retry-choices", failed.map((id) => el("label", {},
+    Object.assign(el("input", { type: "checkbox", value: id }), { checked: keepRetry.has(id) }), " ", id)));
+  document.getElementById("token-state").textContent = stored(TOKEN_KEY)
+    ? "GitHub token saved on this device" : "Buttons need a GitHub token on this device";
+  // a request sent from this device: show it until the runner's status confirms it
+  const request = JSON.parse(stored(REQUEST_KEY) || "null");
+  if (request) {
+    const sameRuns = request.runs === "" || request.runs.split(" ").filter(Boolean).join(" ") === current.join(" ")
+      || (request.runs === "-" && current.length === 0);
+    if (s.runner.control === request.state && sameRuns && s.updated > request.t) {
+      store(REQUEST_KEY, null);
+      message(`Applied: ${request.state} (confirmed by the runner at ${clock(s.updated)}).`, "ok");
+    } else if (nowS() - request.t > 20 * 60) {
+      store(REQUEST_KEY, null);
+      message(["Request of ", clock(request.t), " not confirmed after 20 min. Check ",
+        el("a", { href: `${workflowUrl(s)}`, target: "_blank", rel: "noopener" }, "the workflow runs"), "."], "err");
+    } else {
+      message(`Requested at ${clock(request.t)}: ${request.state}${request.runs ? ` (${request.runs})` : ""}. ` +
+        "The workflow changes control.yaml (~30 s), the runner applies it within a minute and publishes right away.", "wait");
+    }
+  }
+}
+
+async function sendControl(event) {
+  event.preventDefault();
+  if (!status) return;
+  const form = document.getElementById("control");
+  const state = form.querySelector("input[name=state]:checked")?.value;
+  if (!state) return message("Choose a state first.", "err");
+  const runs = [...document.querySelectorAll("#run-choices input:checked")].map((i) => i.value);
+  const inputs = { state, runs: runs.length ? runs.join(" ") : "-",
+    retry: [...document.querySelectorAll("#retry-choices input:checked")].map((i) => i.value).join(" "),
+    skip: document.getElementById("skip").value.trim() };
+  if (state === "stop" && !window.confirm("Stop aborts the running cases and queues them again. Continue?")) return;
+  const token = stored(TOKEN_KEY);
+  if (!token) {
+    window.open(workflowUrl(status), "_blank", "noopener");
+    return message(`No token on this device: the workflow form opened on GitHub. Choose "Run workflow" there with ` +
+      `state ${inputs.state}, runs ${inputs.runs}${inputs.retry ? `, retry ${inputs.retry}` : ""}.`, "wait");
+  }
+  const button = document.getElementById("apply");
+  button.disabled = true;
+  message("Sending …");
+  try {
+    const response = await fetch(`https://api.github.com/repos/${status.runner.repo}/actions/workflows/runner-control.yml/dispatches`, {
+      method: "POST", body: JSON.stringify({ ref: "main", inputs }),
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } });
+    if (response.status === 204) {
+      store(REQUEST_KEY, JSON.stringify({ state, runs: inputs.runs === "-" ? "-" : inputs.runs, t: nowS() }));
+      document.getElementById("skip").value = "";
+      renderControl(status);
+    } else {
+      const reasons = { 401: "the token is wrong or expired", 403: "the token lacks 'Actions: Read and write' for this repository",
+        404: "workflow not found: is .github/workflows/runner-control.yml on main, and is the token for this repository?",
+        422: "GitHub rejected the inputs" };
+      message(`Not sent: ${reasons[response.status] || `GitHub answered ${response.status}`}.`, "err");
+    }
+  } catch (error) {
+    message(`Not sent: ${error.message} (no connection to GitHub?).`, "err");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function setupControl() {
+  document.getElementById("control").addEventListener("submit", sendControl);
+  document.getElementById("control").addEventListener("change", (event) => {
+    if (event.target.name === "state") document.getElementById("state-help").textContent = STATE_HELP[event.target.value];
+  });
+  document.getElementById("token-save").addEventListener("click", () => {
+    const value = document.getElementById("token").value.trim();
+    if (value) store(TOKEN_KEY, value);
+    document.getElementById("token").value = "";
+    if (status) renderControl(status);
+  });
+  document.getElementById("token-forget").addEventListener("click", () => {
+    store(TOKEN_KEY, null);
+    if (status) renderControl(status);
+  });
+}
+
 // --- loading --------------------------------------------------------------------------------------------
 function render() {
   if (!status) return;
-  const parts = [renderHeader, renderRuns, renderRunning, renderMachine, renderLatest, renderChart,
+  const parts = [renderHeader, renderRuns, renderControl, renderRunning, renderMachine, renderLatest, renderChart,
     renderFinished, renderFailures, renderEvents];
   for (const part of parts) {
     try { part(status); } catch (error) { console.error(part.name, error); }  // one broken part must not blank the page
@@ -250,6 +366,7 @@ async function load() {
     box.textContent = `status.json could not be loaded (${error.message}). The runner may not have published yet.`;
   }
 }
+setupControl();
 load();
 setInterval(load, 60 * 1000);
 setInterval(() => status && renderHeader(status), 15 * 1000);  // keep "updated … ago" current
