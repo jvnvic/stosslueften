@@ -27,6 +27,21 @@ Both change numbers in the dataset, so they must be in place before the first re
 
 Total check time: about 1 h of computing.
 
+**Results (night of 2026-10-15/16): both fixes are in `main`.**
+
+| Check | t90 before | t90 now | Airflow now | Inflow − outflow |
+|---|---|---|---|---|
+| default (8 cores) | 76.4 s | 76.4 s (−0.1 %) | 5,471 m³/h | 0.0 |
+| adjacent walls, 8 cores | 88.4 s | 91.6 s | 4,659 m³/h | 0.1 |
+| adjacent walls, 4 cores | 94.0 s | 91.5 s | 4,662 m³/h | 0.1 |
+| opposite walls, tilt / tilt | 429.8 s | 425.9 s (−0.9 %) | 1,634 m³/h | 0.0 |
+| same wall, method A | 581.4 s | 574.8 s (−1.1 %) | 1,340 m³/h | 0.0 |
+| same wall, method B | 442.9 s | 455.6 s (+2.9 %, within B's scatter) | 1,687 m³/h | −0.2 |
+
+- **The core count no longer matters:** adjacent walls now give 91.6 vs 91.5 s on 8 vs 4 cores (−0.13 %; before +6.3 %).
+- **The airflow balances in every case.** For the same wall, the net flow is about 0, but each window exchanges about 660 m³/h. The old plane measurement could not see that.
+- **Added:** B runs stop with an error if the time step collapses (`runTimeControl`, `minTimeStep` 1e-4 s).
+
 ## 2. Sweep generator (`python -m sweeps.generate`)
 
 **Input:** a spec file per run, so that every run is reproducible from one small file:
@@ -121,7 +136,7 @@ wind_speed_ms: [1, 5]       # range, or one value if wind is handled by scaling 
 
 | When | Work | Time |
 |---|---|---|
-| Tonight (automatic, laptop) | the same-wall mesh check (running), then the checks of the two fixes (§1), start ~03:00 | ~5 h of computing |
+| ✅ Night of 2026-10-15/16 | the same-wall mesh check (PLAN.md §5), the checks of the two fixes (§1) | done |
 | Tomorrow morning | Evaluate both; you decide §5 | ~1 h |
 | | Sweep generator and dataset writer, with tests | ~3–4 h |
 | Tomorrow afternoon | Pilot: 15 cases on the simulation PC with two queues (~1.5 h); dataset writer on the pilot | ~2 h |

@@ -164,10 +164,30 @@ Findings:
 - The labels are then B quality everywhere, at about 40 % of B's cost: 120 × ~4 min + 60 × ~40 min ≈ 2 days of compute instead of about 5.
 - `cfd.run_case` applies this automatically (`method_for`): a same-wall case runs A and then B, and `summary.json` records the method.
 
-**Proposed follow-ups before the sweep (open):**
-  - a fine-mesh check of a same-wall case (A and B, about 3–4 h, one night), because of finding 3;
-  - A: run the tracer on the flow averaged over the last ~1000 iterations, not the last iteration (finding 5);
-  - `airflow_m3h`: measure the inflow on the exact face fluxes of the openings, not the interpolated plane (finding 6).
+**Same-wall mesh check and B's own scatter (night of 2026-10-15/16).** Same-wall benchmark case (both windows turned 90°, 3 m/s):
+
+| Mesh | Cells | τ with A | τ with B | Notes |
+|---|---|---|---|---|
+| coarse (×1.4) | 53k | 207 s | 211 s | |
+| medium (standard) | 103k | 249 s | 190 s | laptop |
+| medium, window 1 moved 1 cm | 106k | 248 s | 199 s | |
+| medium, rerun on the simulation PC | 103k | 247 s | 195 s | |
+| medium, with the two fixes below | 103k | 246 s | 198 s | |
+| fine (×0.7) | 254k | 262 s | 220 s | B only stable with max Courant 5; ~4 h on 8 cores |
+
+- **B scatters by about ±5 % on its own** (190–199 s on the medium mesh): tiny changes, another machine or the fixes all move it this much. The flow fluctuates, and 600 s is a finite average. A moves by less than 1.5 %.
+- **A converges with the mesh:** 207, 249, 262 s; medium is about 5 % below fine.
+- **B does not converge clearly:** 211, ~195, 220 s. Fine is 13 % above the medium average, partly because it needed a smaller time step (Courant 5 instead of 10), which may itself change the result.
+- **Fine-mesh B with max Courant 10 diverged** at t = 34 s: the time step collapsed to 1e-93 s. B runs now stop with an error if the time step falls below 1e-4 s, instead of hanging.
+- **Consequence:**
+  - Same-wall rows (method B, medium mesh) carry an uncertainty of roughly ±15 % (mesh plus scatter); cross-ventilation rows (method A) about ±3 %.
+  - A fine mesh for the 60 same-wall cases (~4 h each) is not affordable.
+  - In this case the fine-mesh B value (220 s) lies between medium A (+13 %) and medium B (−11 %). Decision M1 stays as it is, with this uncertainty documented.
+
+**Proposed follow-ups before the sweep:**
+  - a fine-mesh check of a same-wall case (A and B), because of finding 3: **done**, see the table above;
+  - A: run the tracer on the flow averaged over the last ~1000 iterations, not the last iteration (finding 5): **done** (2026-10-16), see DATASET_PLAN.md §1;
+  - `airflow_m3h`: measure the inflow on the exact face fluxes of the openings, not the interpolated plane (finding 6): **done** (2026-10-16), see DATASET_PLAN.md §1.
 - **Optional:** because of finding 4, wind speed could be dropped from the sampled inputs. Every geometry would run at 3 m/s, and other speeds would follow by scaling time with 3/U. The same compute then covers more window geometries. This is an ML-side decision, so it needs the team.
 
 ## 6. Checks before the big sweep
@@ -238,7 +258,7 @@ Findings:
 - **Decision M1 (2026-10-15):** B for same-wall cases, A otherwise (§5). It is built into `cfd.run_case`.
 
 Next, in this order:
-1. **Before the sweep** (proposed in §5):
+1. **Before the sweep** (proposed in §5; done on 2026-10-16 except the team decision):
    - a fine-mesh check of same-wall cases with B (one night). The configs are ready in `configs/benchmark/`:
      - `snappy_same_wall_fine` (fine mesh);
      - `snappy_same_wall_shift_plus1cm` (medium mesh, window 1 moved 1 cm, to measure B's own scatter);

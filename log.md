@@ -479,3 +479,19 @@ Template:
     - Their check runs start automatically after the mesh check.
   - A watcher script stopped itself by matching its own launching shell's command line (the pgrep -f trap). Rewritten to match exact arguments.
 - **Human decisions / review:** Daniel asked to run the fix checks tonight as well.
+
+## 2026-10-16 — Night results: fixes verified and merged, fine-mesh B
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - **Fix checks passed** (DATASET_PLAN.md §1):
+    - the default case is unchanged (−0.1 %);
+    - adjacent walls on 8 vs 4 cores now agree within 0.13 % (before 6.3 %);
+    - inflow equals outflow in every case;
+    - single-sided cases now show their real exchange (about 660 m³/h per window, where the net flow is about 0).
+  - Added a divergence stop for method B (`runTimeControl` `minTimeStep`) and tested that it ends a run with an error.
+  - Merged the branch into `main`.
+  - **Fine-mesh B** (max Courant 5, stable, 4 h on 8 cores): τ 220 s, against 190–199 s on the medium mesh and 211 s on the coarse mesh. Method A converges with the mesh (207, 249, 262 s); B does not clearly.
+  - **B's own scatter** is about ±5 % (window moved 1 cm, simulation PC, after the fixes).
+  - Documented in PLAN.md §5: same-wall rows carry about ±15 % uncertainty. Decision M1 stays.
+- **Human decisions / review:** Daniel asked for the results in the morning; the fixes were part of the agreed plan.

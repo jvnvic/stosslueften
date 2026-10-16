@@ -97,6 +97,9 @@ Not implemented yet (PLAN.md §4): the transient comparison run (benchmark optio
 - `cfd/run_case.py` runs the chain: mesh (snappyHexMesh by default), `topoSet` (cellZone `room`), `renumberMesh`, `checkMesh`, `simpleFoam` in parallel, then the tracer.
   - `method_for(cfg)` implements decision M1: same-wall cases also run the transient stage (method B).
   - It writes `summary.json` with `"method"`; the B results are under `"transient"`.
+  - Method A's tracer uses the flow averaged over the second half of the iterations (`fieldAverage`: `phiMean`, `nutMean`), so results do not depend on where the solver stops.
+  - Window flows come from a face zone across each opening (`window1FlowZone`, built by `topoSet`): net flow and inflow; `airflow_m3h` is the inflow through both windows.
+  - Method B stops with an error if its time step collapses below 1e-4 s (divergence).
 - `cfd/queue.py` runs cases sequentially via `cfd.run_case`. It writes `cases/queues/<start>.json` atomically (status per entry: pending/running/done/failed, duration, t90). `--transient` queues option-B comparison runs. `--resume` continues after an interruption. Several queues can run side by side (e.g. with `--procs 4`).
 - `analysis/monitor.py` is a live matplotlib/Tk window, dark theme, sized to the right half of a 16:9 screen.
   - Data: running solvers and mesh tools from psutil (one row each, up to 4), per-core load in a compact grid for any core count, and the queue files.
