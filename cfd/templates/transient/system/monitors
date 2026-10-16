@@ -61,6 +61,23 @@ roomAverage
     writeInterval   1;
 }
 
+// Stop with an error if the time step collapses: the flow is diverging. Healthy runs stay above
+// 0.001 s; on 2026-10-15 a fine-mesh run fell to 1e-93 s and would have hung for days.
+divergenceGuard
+{
+    type            runTimeControl;
+    libs            (utilityFunctionObjects);
+    satisfiedAction abort;
+    conditions
+    {
+        timeStepCollapsed
+        {
+            type        minTimeStep;
+            minValue    1e-4;
+        }
+    }
+}
+
 // Flow through each window opening [m^3/s]: sum of the face fluxes over a face zone,
 // written every 10 time steps to show how much the flow fluctuates.
 @WINDOW_MONITORS@
