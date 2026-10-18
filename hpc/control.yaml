@@ -1,7 +1,7 @@
 # What the sweep runner on the simulation PC should do (hpc/README.md). Change it with the dashboard's
 # buttons, by hand in the GitHub app (Actions -> Runner control), or edit and push it.
 state: run          # run | pause (finish running cases, start no new ones) | stop (abort running cases, requeue them)
-runs: [train-a-v1]  # runs to work on, in this order, e.g. [train-v1, test-v1]; each needs hpc/runs/<run>.yaml
+runs: [train-a-v1, train-a-turn-v1] # runs to work on, in this order, e.g. [train-v1, test-v1]; each needs hpc/runs/<run>.yaml
 skip: []            # case ids to leave out, e.g. [train-v1_017]
 retry: []           # failed case ids to run again
 runner_ref: main    # runner code version; applied when paused and no case runs
