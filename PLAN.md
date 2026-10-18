@@ -269,10 +269,12 @@ Findings:
   - Dashboard: https://jvnvic.github.io/stosslueften/, with buttons that start the "Runner control" workflow.
   - Guide: `hpc/README.md`.
 - **`train-v1` ran on the simulation PC:** 150 of 150 done, 0 failed, 48 h (finished 2026-10-18 09:08). Not analysed yet.
-- **Extra training run `train-a-v1`** (Daniel, 2026-10-18): 50 more method A cases, 25 with windows on opposite walls and 25 on adjacent walls (corner). Same input ranges as `train-v1`, own seed. The training set then has 200 cases: 50 same-wall, 75 opposite, 75 adjacent. Started overnight on 2026-10-18, about 3 h.
+- **Extra training run `train-a-v1`** (Daniel, 2026-10-18): 50 more method A cases, 25 with windows on opposite walls and 25 on adjacent walls (corner). Same input ranges as `train-v1`, own seed. Started overnight on 2026-10-18, about 3 h.
+- **Extra training run `train-a-turn-v1`** (Daniel, 2026-10-18): another 50 method A cases on opposite and adjacent walls (25 + 25), with both windows turned (no tilted windows). Queued after `train-a-v1`, about 3 h.
+  - The training set then has 250 cases: 50 same-wall, 100 opposite, 100 adjacent. The mode mix of the training set shifts towards turned windows; `test-v1` keeps the even mix of `train-v1`.
 
 Next, in this order:
-1. **Check the results** of `train-v1` and `train-a-v1` (dashboard, `hpc-results` branch).
+1. **Check the results** of `train-v1`, `train-a-v1` and `train-a-turn-v1` (dashboard, `hpc-results` branch).
    - Also check that the tracer never froze in weak-flow cases: the tracer solver uses tolerance 1e-7 with relTol 0, which can skip every iteration when the flow is weak (seen in a side project). On the PC: `grep -c "No Iterations 0" cases/<case>/tracer/log.tracerFoam`.
 2. **Dataset writer** (`python -m sweeps.dataset`, DATASET_PLAN.md §3). It reads the `hpc-results` branch and writes `results/summary.csv` and `results/timeseries/`.
 3. **Run `test-v1`**: tick it on the dashboard.

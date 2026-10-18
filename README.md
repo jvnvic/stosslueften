@@ -16,7 +16,7 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | Tracer (air replacement) and metrics | ✅ runs on the frozen steady flow |
 | Solver benchmark: comparison with a fully transient run | ✅ decided: fast method for windows on different walls, exact method for the same wall (see below) |
 | Mesh study | ✅ snappyHexMesh, medium cell sizes (see PLAN.md §6) |
-| Parameter sweep, dataset | 🟡 training run done on the simulation PC (150 cases); 50 extra fast-method cases (`train-a-v1`) running; then the dataset writer and the 30 test cases |
+| Parameter sweep, dataset | 🟡 training run done on the simulation PC (150 cases); 100 extra fast-method cases running (`train-a-v1`, and `train-a-turn-v1` with turned windows only); then the dataset writer and the 30 test cases |
 | Remote runner and dashboard for the simulation PC | ✅ running on the simulation PC ([hpc/README.md](hpc/README.md)); dashboard at https://jvnvic.github.io/stosslueften/ |
 
 ## First result

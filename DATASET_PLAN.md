@@ -1,6 +1,6 @@
 # Dataset plan: sweep generator and dataset writer
 
-Status: **decisions approved 2026-10-16** (§5). The two fixes (§1) are in `main`; the sweep generator (§2) is built and has drawn `train-v1` (150 cases), `test-v1` (30 cases) and the extra method A run `train-a-v1` (50 cases, opposite and adjacent walls only, 2026-10-18); the dataset writer (§3) follows. The background is in PLAN.md §2–3 (inputs and columns) and §5 (method by layout).
+Status: **decisions approved 2026-10-16** (§5). The two fixes (§1) are in `main`; the sweep generator (§2) is built and has drawn `train-v1` (150 cases), `test-v1` (30 cases) and the extra method A runs `train-a-v1` and `train-a-turn-v1` (50 cases each, opposite and adjacent walls only, the second with turned windows only, 2026-10-18); the dataset writer (§3) follows. The background is in PLAN.md §2–3 (inputs and columns) and §5 (method by layout).
 
 The chain from inputs to the CSV:
 
@@ -94,7 +94,7 @@ An optional key `layouts: [opposite_walls, adjacent_walls]` limits a run to some
 
 ## 3. Dataset writer (`python -m sweeps.dataset`)
 
-`python -m sweeps.dataset --runs train-v1 train-a-v1 test-v1 [--cases <folder>]` rebuilds `results/` from scratch every time:
+`python -m sweeps.dataset --runs train-v1 train-a-v1 train-a-turn-v1 test-v1 [--cases <folder>]` rebuilds `results/` from scratch every time:
 - `results/summary.csv`: one row per case, sorted by `case_id`.
 - `results/timeseries/<case_id>.csv`: `time_s, fresh_fraction`, one value per second from 0 to 600 s.
 - `results/dataset_info.json`: when, from which runs and code commits, and counts per status.

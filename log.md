@@ -610,3 +610,4 @@ Template:
   - Added its run file `hpc/runs/train-a-v1.yaml` and started it on the simulation PC (`hpc/control.yaml`: run, `[train-a-v1]`).
   - Updated PLAN.md §9, DATASET_PLAN.md, AGENTS.md and README.md. The results of `train-v1` were not analysed, as asked.
 - **Human decisions / review:** After `train-v1` finished (150 of 150 in 48 h), Daniel decided to use the night for 50 more fast-method cases on opposite and adjacent walls.
+- **Follow-up the same evening:** Daniel asked for another 50 method A cases without tilted windows. Drew `train-a-turn-v1` (25 opposite + 25 adjacent walls, `turn_share: 1`, seed 20261023), added its run file and queued it after `train-a-v1` (`runs: [train-a-v1, train-a-turn-v1]`). Checked first that `train-a-v1` had started on the PC (2 cases running).
