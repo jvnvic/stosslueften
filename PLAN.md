@@ -256,7 +256,7 @@ Findings:
 | The Gmsh tetrahedral mesh is poor or slow for RANS | Switch to `snappyHexMesh`, with the geometry exported as STL from Python |
 | Steady RANS gets single-sided (`same_wall`) exchange wrong (−6 to +31 %, §5) | Method B for same-wall cases (decision M1); check B's mesh dependence for these cases before the sweep |
 
-## 9. Still open / next steps (state 2026-10-16)
+## 9. Still open / next steps (state 2026-10-18)
 
 **Done:**
 - Mesh decision: snappyHexMesh medium (§6).
@@ -268,12 +268,13 @@ Findings:
 - The simulation PC is set up (HPC_PLAN.md §8) and the remote runner with its dashboard is running there.
   - Dashboard: https://jvnvic.github.io/stosslueften/, with buttons that start the "Runner control" workflow.
   - Guide: `hpc/README.md`.
+- **`train-v1` ran on the simulation PC:** 150 of 150 done, 0 failed, 48 h (finished 2026-10-18 09:08). Not analysed yet.
+- **Extra training run `train-a-v1`** (Daniel, 2026-10-18): 50 more method A cases, 25 with windows on opposite walls and 25 on adjacent walls (corner). Same input ranges as `train-v1`, own seed. The training set then has 200 cases: 50 same-wall, 75 opposite, 75 adjacent. Started overnight on 2026-10-18, about 3 h.
 
 Next, in this order:
-1. **Run `train-v1` on the simulation PC.** On the dashboard: *Run*, tick `train-v1`, *Apply*. About 2 days.
-   - Its first 15 cases are the pilot. If a pilot was started there by hand with `cfd.queue`, the runner takes over the finished cases and waits for the busy ones.
-   - Check the first finished cases (dashboard, `hpc-results` branch) before leaving it alone.
+1. **Check the results** of `train-v1` and `train-a-v1` (dashboard, `hpc-results` branch).
+   - Also check that the tracer never froze in weak-flow cases: the tracer solver uses tolerance 1e-7 with relTol 0, which can skip every iteration when the flow is weak (seen in a side project). On the PC: `grep -c "No Iterations 0" cases/<case>/tracer/log.tracerFoam`.
 2. **Dataset writer** (`python -m sweeps.dataset`, DATASET_PLAN.md §3). It reads the `hpc-results` branch and writes `results/summary.csv` and `results/timeseries/`.
-3. **Run `test-v1`** after `train-v1`: tick it as the 2nd run, or later.
+3. **Run `test-v1`**: tick it on the dashboard.
 4. **Hand over to the ML part:** `results/README.md` (data dictionary) and the uncertainty notes.
 5. **Still undecided:** exact deadline and deliverables, and the task split in the team. CFD runs only on Daniel's PCs, so teammates could take visualizations, literature and documentation.

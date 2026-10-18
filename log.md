@@ -600,3 +600,13 @@ Template:
   - Added two missing facts: the path of one case from config to `results/summary.csv`, and how the default snappyHexMesh mesher gets its geometry (`geometry/surfaces.py` → `obstacle.stl`).
   - Updated the two outdated status rows in `README.md`.
 - **Human decisions / review:** Daniel started the check with `/init`.
+
+## 2026-10-18 — Extra method A training run `train-a-v1`
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Added an optional `layouts` key to the sweep spec, so a run can be limited to some layouts. Each layout keeps its own seed offset, so `train-v1` and `test-v1` still give the same cases (checked by regenerating them). Added two tests.
+  - Drew `train-a-v1`: 50 cases, 25 with windows on opposite walls and 25 on adjacent walls, all method A, same input ranges as `train-v1`, seed 20261020.
+  - Added its run file `hpc/runs/train-a-v1.yaml` and started it on the simulation PC (`hpc/control.yaml`: run, `[train-a-v1]`).
+  - Updated PLAN.md §9, DATASET_PLAN.md, AGENTS.md and README.md. The results of `train-v1` were not analysed, as asked.
+- **Human decisions / review:** After `train-v1` finished (150 of 150 in 48 h), Daniel decided to use the night for 50 more fast-method cases on opposite and adjacent walls.

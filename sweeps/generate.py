@@ -10,10 +10,11 @@ Writes, next to the spec file:
 
 Running it again with the same spec writes the same files.
 
-Sampling: exactly equal shares per layout; within each layout a Latin hypercube spreads every
-input evenly over its range. A draw whose windows overlap or whose sashes collide gets new window
-positions (uniform), and keeps its other values. The cases are interleaved by layout, so every
-block of three cases holds one of each, and any first N cases (e.g. a pilot) stay balanced.
+Sampling: exactly equal shares per layout (all three, or those listed under the optional spec key
+`layouts`); within each layout a Latin hypercube spreads every input evenly over its range. A draw
+whose windows overlap or whose sashes collide gets new window positions (uniform), and keeps its
+other values. The cases are interleaved by layout, so every block of cases holds one of each, and
+any first N cases (e.g. a pilot) stay balanced.
 """
 
 from __future__ import annotations
@@ -39,15 +40,19 @@ DIMS = ("window1_x_m", "window2_x_m", "window1_mode", "window2_mode", "window1_a
 MAX_REDRAWS = 1000
 SPEC_KEYS = {"run_id", "split", "n_cases", "seed", "base_config", "turn_share", "turn_angle_deg",
              "tilt_angle_deg", "hinge", "wind_speed_ms"}
+OPTIONAL_KEYS = {"layouts"}  # default: all of LAYOUTS
 
 
 def load_spec(path: Path) -> dict:
     spec = yaml.safe_load(path.read_text())
-    missing, unknown = SPEC_KEYS - spec.keys(), spec.keys() - SPEC_KEYS
+    missing, unknown = SPEC_KEYS - spec.keys(), spec.keys() - SPEC_KEYS - OPTIONAL_KEYS
     if missing or unknown:
         raise SystemExit(f"{path}: missing keys {sorted(missing)}, unknown keys {sorted(unknown)}")
     if spec["split"] not in ("train", "test") or spec["hinge"] not in ("sampled", "left", "right"):
         raise SystemExit(f"{path}: split must be train or test, hinge sampled, left or right")
+    layouts = spec.get("layouts", LAYOUTS)
+    if not layouts or set(layouts) - set(LAYOUTS) or len(set(layouts)) != len(layouts):
+        raise SystemExit(f"{path}: layouts must be a list of distinct names from {LAYOUTS}")
     return spec
 
 
@@ -166,6 +171,7 @@ def plot_coverage(cases: list[dict], title: str, out: Path) -> None:
     }
     names = list(columns)
     k = len(names)
+    present = [layout for layout in colors if any(c["layout"] == layout for c in cases)]
     fig, axes = plt.subplots(k, k, figsize=(2.0 * k, 2.0 * k), dpi=110, facecolor=SURFACE)
     for row, ny in enumerate(names):
         for col, nx in enumerate(names):
@@ -179,7 +185,7 @@ def plot_coverage(cases: list[dict], title: str, out: Path) -> None:
             if col > row:
                 ax.set_visible(False)
                 continue
-            for layout in ("opposite_walls", "same_wall", "adjacent_walls"):
+            for layout in present:
                 sub = [c for c in cases if c["layout"] == layout]
                 xs = [columns[nx](c) for c in sub]
                 if row == col:
@@ -190,8 +196,8 @@ def plot_coverage(cases: list[dict], title: str, out: Path) -> None:
                 ax.set_xlabel(nx, fontsize=7, color=INK)
             if col == 0 and row > 0:
                 ax.set_ylabel(ny, fontsize=7, color=INK)
-    handles = [plt.Line2D([], [], marker="o", linestyle="", color=c, markersize=5) for c in colors.values()]
-    fig.legend(handles, [name.replace("_", " ") for name in colors], loc="upper right", frameon=False,
+    handles = [plt.Line2D([], [], marker="o", linestyle="", color=colors[name], markersize=5) for name in present]
+    fig.legend(handles, [name.replace("_", " ") for name in present], loc="upper right", frameon=False,
                fontsize=8, labelcolor=INK, bbox_to_anchor=(0.98, 0.97))
     fig.suptitle(title, x=0.02, ha="left", color=INK, fontsize=10)
     fig.tight_layout(rect=(0, 0, 1, 0.96))
@@ -207,13 +213,16 @@ def generate(spec_path: Path, plot: bool = True) -> list[Path]:
     base_text = base_path.read_text()
     base_dict = yaml.safe_load(base_text)
 
-    shares = [spec["n_cases"] // len(LAYOUTS) + (i < spec["n_cases"] % len(LAYOUTS)) for i in range(len(LAYOUTS))]
+    layouts = [layout for layout in LAYOUTS if layout in spec.get("layouts", LAYOUTS)]
+    shares = [spec["n_cases"] // len(layouts) + (i < spec["n_cases"] % len(layouts)) for i in range(len(layouts))]
     per_layout, redraws = {}, {}
-    for i, (layout, n) in enumerate(zip(LAYOUTS, shares)):
-        per_layout[layout], redraws[layout] = draw_layout(spec, base_dict, layout, n, spec["seed"] + i)
+    for layout, n in zip(layouts, shares):
+        # the seed offset is the layout's place in LAYOUTS, so leaving out a layout changes no other draw
+        seed = spec["seed"] + LAYOUTS.index(layout)
+        per_layout[layout], redraws[layout] = draw_layout(spec, base_dict, layout, n, seed)
 
-    # interleave the layouts: every block of three cases has one of each
-    cases = [per_layout[layout][k] for k in range(max(shares)) for layout in LAYOUTS if k < len(per_layout[layout])]
+    # interleave the layouts: every block of cases has one of each
+    cases = [per_layout[layout][k] for k in range(max(shares)) for layout in layouts if k < len(per_layout[layout])]
     for old in folder.glob(f"{spec['run_id']}_*.yaml"):  # a smaller n_cases must not leave old files behind
         old.unlink()
     header = (f"# Generated by `python -m sweeps.generate {spec_path.as_posix()}` "
@@ -231,7 +240,7 @@ def generate(spec_path: Path, plot: bool = True) -> list[Path]:
     methods["A"] = len(cases) - methods["B"]
     manifest = {
         "run_id": spec["run_id"], "split": spec["split"], "n_cases": len(cases), "spec": spec,
-        "cases_per_layout": dict(zip(LAYOUTS, shares)), "cases_per_method": methods,
+        "cases_per_layout": dict(zip(layouts, shares)), "cases_per_method": methods,
         "position_redraws": redraws, "coverage": coverage(cases),
         "git_commit": _git_commit(), "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }

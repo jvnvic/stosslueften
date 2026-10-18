@@ -1,0 +1,14 @@
+# Extra training cases for the method A layouts (decided by Daniel 2026-10-18, after train-v1 finished):
+# windows on opposite walls (cross-ventilation) and on adjacent walls (corner). Same input ranges as train-v1.
+# Generate the case files with:  python -m sweeps.generate configs/sweep/train-a-v1/spec.yaml
+run_id: train-a-v1
+split: train                # train | test
+n_cases: 50                 # split evenly over the layouts below: 25 + 25, all method A
+layouts: [opposite_walls, adjacent_walls]   # optional; default all three layouts
+seed: 20261020              # own seed; per-layout seeds 20261021/22 differ from train-v1 and test-v1
+base_config: configs/default.yaml   # fixed setup: room, mesh, solver settings
+turn_share: 0.5             # per window: share of turned (vs tilted) windows -> each mode pair ~25 %
+turn_angle_deg: [15, 90]
+tilt_angle_deg: 6
+hinge: sampled              # sampled | left | right
+wind_speed_ms: [1, 5]

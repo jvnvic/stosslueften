@@ -1,6 +1,6 @@
 # Dataset plan: sweep generator and dataset writer
 
-Status: **decisions approved 2026-10-16** (§5). The two fixes (§1) are in `main`; the sweep generator (§2) is built and has drawn `train-v1` (150 cases) and `test-v1` (30 cases); the dataset writer (§3) follows. The background is in PLAN.md §2–3 (inputs and columns) and §5 (method by layout).
+Status: **decisions approved 2026-10-16** (§5). The two fixes (§1) are in `main`; the sweep generator (§2) is built and has drawn `train-v1` (150 cases), `test-v1` (30 cases) and the extra method A run `train-a-v1` (50 cases, opposite and adjacent walls only, 2026-10-18); the dataset writer (§3) follows. The background is in PLAN.md §2–3 (inputs and columns) and §5 (method by layout).
 
 The chain from inputs to the CSV:
 
@@ -59,6 +59,8 @@ hinge: sampled              # sampled | left   (decide)
 wind_speed_ms: [1, 5]       # range, or one value if wind is handled by scaling   (decide)
 ```
 
+An optional key `layouts: [opposite_walls, adjacent_walls]` limits a run to some layouts (used by `train-a-v1`). Each layout keeps its own seed offset, so leaving one out changes no other draw.
+
 **Sampling:**
 1. **Exactly equal shares per layout** (50 / 50 / 50).
 2. **Within each layout, a Latin hypercube** (`scipy.stats.qmc.LatinHypercube`, fixed seed) over 9 dimensions: both window positions, both modes, both angles, both hinges and the wind. A Latin hypercube spreads every input evenly over its range, even with few cases.
@@ -92,7 +94,7 @@ wind_speed_ms: [1, 5]       # range, or one value if wind is handled by scaling 
 
 ## 3. Dataset writer (`python -m sweeps.dataset`)
 
-`python -m sweeps.dataset --runs train-v1 test-v1 [--cases <folder>]` rebuilds `results/` from scratch every time:
+`python -m sweeps.dataset --runs train-v1 train-a-v1 test-v1 [--cases <folder>]` rebuilds `results/` from scratch every time:
 - `results/summary.csv`: one row per case, sorted by `case_id`.
 - `results/timeseries/<case_id>.csv`: `time_s, fresh_fraction`, one value per second from 0 to 600 s.
 - `results/dataset_info.json`: when, from which runs and code commits, and counts per status.

@@ -75,3 +75,22 @@ def test_done_needs_the_final_method(tmp_path, monkeypatch, summary, layout, don
     (tmp_path / "x").mkdir()
     (tmp_path / "x" / "summary.json").write_text(json.dumps(summary))
     assert queues.is_done("x", layout) is done
+
+
+def test_a_layout_subset_draws_only_those_layouts_and_keeps_their_draws(tmp_path):
+    full = generate.generate(_spec(tmp_path / "full", n_cases=6), plot=False)
+    subset = generate.generate(_spec(tmp_path / "sub", n_cases=4, layouts=["opposite_walls", "adjacent_walls"]),
+                               plot=True)
+    cfgs = [load_config(p) for p in subset]
+    assert [c.layout for c in cfgs] == ["opposite_walls", "adjacent_walls"] * 2
+    manifest = json.loads((subset[0].parent / "manifest.json").read_text())
+    assert manifest["cases_per_layout"] == {"opposite_walls": 2, "adjacent_walls": 2}
+    assert manifest["cases_per_method"] == {"B": 0, "A": 4}
+    # same seed and count per layout as the full run: the same draws (the seed offset follows LAYOUTS)
+    full_cfgs = [load_config(p) for p in full]
+    assert [c.wind_speed_ms for c in cfgs] == [c.wind_speed_ms for c in full_cfgs if c.layout != "same_wall"]
+
+
+def test_unknown_layouts_are_refused(tmp_path):
+    with pytest.raises(SystemExit, match="layouts"):
+        generate.load_spec(_spec(tmp_path, layouts=["corner"]))
