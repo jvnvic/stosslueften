@@ -611,3 +611,13 @@ Template:
   - Updated PLAN.md §9, DATASET_PLAN.md, AGENTS.md and README.md. The results of `train-v1` were not analysed, as asked.
 - **Human decisions / review:** After `train-v1` finished (150 of 150 in 48 h), Daniel decided to use the night for 50 more fast-method cases on opposite and adjacent walls.
 - **Follow-up the same evening:** Daniel asked for another 50 method A cases without tilted windows. Drew `train-a-turn-v1` (25 opposite + 25 adjacent walls, `turn_share: 1`, seed 20261023), added its run file and queued it after `train-a-v1` (`runs: [train-a-v1, train-a-turn-v1]`). Checked first that `train-a-v1` had started on the PC (2 cases running).
+
+## 2026-10-19 — Dataset writer and the first training CSV
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Confirmed that all three training runs finished on the simulation PC: 250 of 250 cases done, none failed.
+  - Built the dataset writer `sweeps/dataset.py` (DATASET_PLAN.md §3), with 8 tests. It reads the runner's `hpc-results` and `hpc-status` branches straight from GitHub and writes `results/summary.csv` with the frozen columns, the curves in `results/timeseries/` and `results/dataset_info.json`. It checks every case: inputs against the drawn case, method, curve shape and range, tracer bounds, flow balance and mesh size.
+  - Found a numerical fault while checking the curves. In 9 of the 50 same-wall cases, the method B tracer froze: it barely moved and replaced only 1–15 % of what method A gives. The cause is the tracer solver's tolerance (1e-7, relTol 0), which skips the iterations in weak flows. The writer marks these rows `failed`. The other 41 B cases agree with A as in the benchmark; no other A curve is affected (checked by the jitter of the 1 s steps).
+  - Wrote the first CSV (250 rows, 241 ok, 9 failed), the data dictionary `results/README.md` for teammates, and updated PLAN.md §9, DATASET_PLAN.md, AGENTS.md and README.md.
+- **Human decisions / review:** Daniel asked for a first consolidated training CSV once the runs had finished. The fix of the tracer settings and the rerun of the 9 cases are proposed, not yet decided.

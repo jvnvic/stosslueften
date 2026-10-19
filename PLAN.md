@@ -256,7 +256,7 @@ Findings:
 | The Gmsh tetrahedral mesh is poor or slow for RANS | Switch to `snappyHexMesh`, with the geometry exported as STL from Python |
 | Steady RANS gets single-sided (`same_wall`) exchange wrong (−6 to +31 %, §5) | Method B for same-wall cases (decision M1); check B's mesh dependence for these cases before the sweep |
 
-## 9. Still open / next steps (state 2026-10-18)
+## 9. Still open / next steps (state 2026-10-19)
 
 **Done:**
 - Mesh decision: snappyHexMesh medium (§6).
@@ -268,15 +268,22 @@ Findings:
 - The simulation PC is set up (HPC_PLAN.md §8) and the remote runner with its dashboard is running there.
   - Dashboard: https://jvnvic.github.io/stosslueften/, with buttons that start the "Runner control" workflow.
   - Guide: `hpc/README.md`.
-- **`train-v1` ran on the simulation PC:** 150 of 150 done, 0 failed, 48 h (finished 2026-10-18 09:08). Not analysed yet.
-- **Extra training run `train-a-v1`** (Daniel, 2026-10-18): 50 more method A cases, 25 with windows on opposite walls and 25 on adjacent walls (corner). Same input ranges as `train-v1`, own seed. Started overnight on 2026-10-18, about 3 h.
-- **Extra training run `train-a-turn-v1`** (Daniel, 2026-10-18): another 50 method A cases on opposite and adjacent walls (25 + 25), with both windows turned (no tilted windows). Queued after `train-a-v1`, about 3 h.
-  - The training set then has 250 cases: 50 same-wall, 100 opposite, 100 adjacent. The mode mix of the training set shifts towards turned windows; `test-v1` keeps the even mix of `train-v1`.
+- **`train-v1` ran on the simulation PC:** 150 of 150 done, 0 failed, 48 h (finished 2026-10-18 09:08).
+- **Extra training run `train-a-v1`** (Daniel, 2026-10-18): 50 more method A cases, 25 with windows on opposite walls and 25 on adjacent walls (corner). Same input ranges as `train-v1`, own seed. Done: 50 of 50, 0 failed.
+- **Extra training run `train-a-turn-v1`** (Daniel, 2026-10-18): another 50 method A cases on opposite and adjacent walls (25 + 25), with both windows turned (no tilted windows). Done: 50 of 50, 0 failed (finished 2026-10-19 05:29).
+  - The training set has 250 cases: 50 same-wall, 100 opposite, 100 adjacent. The mode mix of the training set shifts towards turned windows; `test-v1` keeps the even mix of `train-v1`.
+
+- **Dataset writer** (`python -m sweeps.dataset`, DATASET_PLAN.md §3) and the **first training CSV** (2026-10-19): `results/summary.csv` with 250 rows, 241 `ok` and 9 `failed`, plus `results/timeseries/` and the data dictionary `results/README.md`.
+
+**Found while building the CSV: a frozen tracer in 9 same-wall (method B) cases** (`train-v1_019`, `_028`, `_043`, `_058`, `_064`, `_067`, `_070`, `_082`, `_121`).
+- In these cases the B tracer hardly moves: after 600 s only 0.1–5 % of the air is replaced, 1–15 % of what method A gives for the same case. Between 146 and 598 of the 600 one-second steps show no change at all. The other 41 B cases agree with A within −10…+15 %, as in the benchmark (§5).
+- In `train-v1_019`, method A's tracer froze as well. No other A curve shows it.
+- Cause: the tracer solver settings (`C`: tolerance 1e-7, relTol 0, in `cfd/templates/tracer/` and `transient/`). The solver skips its iterations when the first residual is already below the tolerance. In very weak flows (all 9 are same-wall cases with weak room flow, mostly tilted windows) that happens nearly every time step, so the tracer stays as it was.
+- The dataset writer detects it (more than 10 s without any change) and writes these rows as `failed`.
 
 Next, in this order:
-1. **Check the results** of `train-v1`, `train-a-v1` and `train-a-turn-v1` (dashboard, `hpc-results` branch).
-   - Also check that the tracer never froze in weak-flow cases: the tracer solver uses tolerance 1e-7 with relTol 0, which can skip every iteration when the flow is weak (seen in a side project). On the PC: `grep -c "No Iterations 0" cases/<case>/tracer/log.tracerFoam`.
-2. **Dataset writer** (`python -m sweeps.dataset`, DATASET_PLAN.md §3). It reads the `hpc-results` branch and writes `results/summary.csv` and `results/timeseries/`.
-3. **Run `test-v1`**: tick it on the dashboard.
-4. **Hand over to the ML part:** `results/README.md` (data dictionary) and the uncertainty notes.
+1. **Fix the tracer solver settings** in both templates, e.g. `minIter 1` and a much smaller tolerance. Verify on `train-v1_019` (methods A and B) and check that an unaffected case keeps its result.
+2. **Rerun the 9 cases** with the fix: method B, about 1.5 h each, so about 7 h on the simulation PC. The runner only reruns failed cases, so this needs a small addition (e.g. a rerun run with the same configs).
+3. **Run `test-v1`** with the fix: tick it on the dashboard.
+4. **Hand over to the ML part:** `results/README.md` (data dictionary, done) and the uncertainty notes.
 5. **Still undecided:** exact deadline and deliverables, and the task split in the team. CFD runs only on Daniel's PCs, so teammates could take visualizations, literature and documentation.

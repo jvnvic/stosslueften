@@ -16,8 +16,14 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | Tracer (air replacement) and metrics | ✅ runs on the frozen steady flow |
 | Solver benchmark: comparison with a fully transient run | ✅ decided: fast method for windows on different walls, exact method for the same wall (see below) |
 | Mesh study | ✅ snappyHexMesh, medium cell sizes (see PLAN.md §6) |
-| Parameter sweep, dataset | 🟡 training run done on the simulation PC (150 cases); 100 extra fast-method cases running (`train-a-v1`, and `train-a-turn-v1` with turned windows only); then the dataset writer and the 30 test cases |
+| Parameter sweep, dataset | 🟡 **first training dataset ready: [results/](results/README.md)**, 250 simulations, 241 usable. 9 same-wall cases need a rerun (frozen tracer, PLAN.md §9); the 30 test cases follow |
 | Remote runner and dashboard for the simulation PC | ✅ running on the simulation PC ([hpc/README.md](hpc/README.md)); dashboard at https://jvnvic.github.io/stosslueften/ |
+
+## The dataset
+
+[results/summary.csv](results/summary.csv) has one row per simulation: the window setup and wind (inputs) and how fast the air is replaced (results). [results/README.md](results/README.md) explains every column. Load it with `pandas.read_csv("results/summary.csv")` or open it in Excel / LibreOffice. Use only rows with `status = ok`.
+
+It is rebuilt from the simulation PC's results with `python -m sweeps.dataset --hpc --runs train-v1 train-a-v1 train-a-turn-v1` (any OS, needs git access to the repository).
 
 ## First result
 
@@ -160,9 +166,10 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 
 | Path | Contents |
 |---|---|
-| `configs/` | Case files (YAML): one example per layout in `configs/examples/`, the mesh and solver checks in `configs/benchmark/` and `configs/comparison/` |
+| `configs/` | Case files (YAML): one example per layout in `configs/examples/`, the mesh and solver checks in `configs/benchmark/` and `configs/comparison/`, the dataset runs in `configs/sweep/` |
 | `cfd/` | Config loading, the OpenFOAM case templates and setup, the case runner, and our tracer solver |
 | `analysis/` | Metrics and pictures from solved cases |
+| `sweeps/` | Draws the dataset runs (`generate.py`) and collects the results into `results/` (`dataset.py`) |
 | `geometry/` | Window placement, the Gmsh geometry and mesh generator, and the 3D renders |
 | `docs/images/` | Pictures used in this README |
 | `docs/overview/` | One-page project overview (LaTeX and PDF) |
@@ -170,7 +177,7 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 | `tests/` | Automated tests |
 | `hpc/` | Remote sweep runner and dashboard ([hpc/README.md](hpc/README.md)); `hpc/setup/` sets up the simulation PC |
 | `cases/` | Generated simulation folders (not in git) |
-| `results/` | The dataset (planned) |
+| `results/` | The dataset: `summary.csv`, the curves in `timeseries/`, the data dictionary `README.md` |
 
 ## Documentation
 

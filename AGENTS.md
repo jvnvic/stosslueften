@@ -11,11 +11,12 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 - [VENTILATION_CFD_PROJECT.md](VENTILATION_CFD_PROJECT.md) is the original background spec. PLAN.md wins wherever they differ.
 - [DATASET_PLAN.md](DATASET_PLAN.md) plans the sweep generator (built) and the dataset writer (next).
 - [HPC_PLAN.md](HPC_PLAN.md) plans the remote sweep runner (Windows/WSL2 PC, control and status through GitHub). It is built and runs on the simulation PC (`hpc/`, operations guide `hpc/README.md`).
-- Status (2026-10-18):
+- Status (2026-10-19):
   - The pipeline is verified (PLAN.md §5–6). Decision M1: method B for same-wall cases, A otherwise; `cfd.run_case` applies it.
   - The inputs and CSV columns are decided and frozen (PLAN.md §2–3). The runs `train-v1` (150), `train-a-v1` and `train-a-turn-v1` (50 extra method A cases each) and `test-v1` (30) are drawn in `configs/sweep/`.
-  - The remote runner and dashboard (`hpc/`) run on the simulation PC. `train-v1` is done (150/150); `train-a-v1` and `train-a-turn-v1` run next.
-  - **Next: check the results, build the dataset writer, run `test-v1`**; see PLAN.md §9.
+  - The remote runner and dashboard (`hpc/`) run on the simulation PC. `train-v1`, `train-a-v1` and `train-a-turn-v1` are done (250 cases).
+  - The first training CSV is in `results/` (241 ok, 9 failed: a frozen tracer in weak same-wall flows).
+  - **Next: fix the tracer solver settings, rerun the 9 cases, run `test-v1`**; see PLAN.md §9.
 - Deadline: less than 6 weeks from 2026-10-14.
 
 ## Environment
@@ -80,9 +81,8 @@ python -m hpc.setup.compare_reference                        # simulation PC: re
 bash hpc/setup/install_runner.sh                             # simulation PC: install/update the runner service (hpc/README.md)
 python -m hpc.show --watch                                   # simulation PC: runner summary from ~/hpc/state.json
 python -m hpc.runner --home /tmp/hpc --fake --once           # one runner round with fake cases (no OpenFOAM)
+python -m sweeps.dataset --hpc --runs train-v1 train-a-v1 train-a-turn-v1   # rebuild results/ from the runner's branches (any OS)
 ```
-
-Not implemented yet: the dataset writer (`python -m sweeps.dataset`, DATASET_PLAN.md §3).
 
 - Gmsh meshes must be written in MSH 2.2 format (`Mesh.MshFileVersion = 2.2`) for `gmshToFoam`.
 - In ParaView, use its built-in OpenFOAM reader. The AUR package's reader plugin does not build.
@@ -118,6 +118,7 @@ Not implemented yet: the dataset writer (`python -m sweeps.dataset`, DATASET_PLA
   - Light: `TailTable` reads only newly appended lines and plots are thinned. Each panel is wrapped so that errors cannot stop the window.
 - `cfd/templates/transient/` is the option-B comparison stage: pimpleFoam starting from the steady solution, with a spin-up and then the tracer via the `scalarTransport` function object. The runner uses `mpirun --bind-to none` so that two cases can share the CPU.
 - `analysis/visualize.py` reads a solved case with PyVista. It renders top views at window height (air speed with streamlines, or the tracer), the mesh (cuts coloured by cell size and the surface grid), and plots the replacement curve with matplotlib.
+- `sweeps/dataset.py` writes `results/` (frozen columns of PLAN.md §3) from the `hpc-results` and `hpc-status` branches (`--hpc`) or from local case folders (`--cases`). It checks every case; known faults (frozen tracer, broken curve) become `failed` rows. `results/README.md` is the hand-written data dictionary for teammates.
 - `sweeps/generate.py` draws a run's cases from `configs/sweep/<run>/spec.yaml`: a Latin hypercube per layout (all three, or those in the optional key `layouts`), interleaved layouts, position redraws for overlapping windows. It writes the case files, `manifest.json` and `coverage.png`. `sweeps/queues.py` splits a run into balanced `cfd.queue` lists, with same-wall (B) cases first.
 - `configs/sweep/train-v1/` (150 cases) and `configs/sweep/test-v1/` (30 cases) are the dataset runs (decided 2026-10-16). `configs/sweep/train-a-v1/` adds 50 training cases on opposite and adjacent walls (method A, 2026-10-18), `configs/sweep/train-a-turn-v1/` 50 more with turned windows only (`turn_share: 1`).
 - `hpc/` is the sweep runner for the simulation PC (HPC_PLAN.md, operations: `hpc/README.md`).
