@@ -1,0 +1,80 @@
+{
+  "created_utc": "2026-10-19T05:20:27Z",
+  "writer_commit": "e7ebcbb2d70419568ddbb0016ad2b57ed0e87c7f",
+  "source": "hpc-results and hpc-status branches",
+  "runs": {
+    "train-v1": {
+      "split": "train",
+      "cases": 150,
+      "ok": 141,
+      "failed": 9,
+      "not_run_yet": 0,
+      "code_commits": [
+        "4a2f37ea83ae783d9a88313945e5eb80f11adb19"
+      ]
+    },
+    "train-a-v1": {
+      "split": "train",
+      "cases": 50,
+      "ok": 50,
+      "failed": 0,
+      "not_run_yet": 0,
+      "code_commits": [
+        "a1f24ea26b06181aa7931192ad91aab762e0dad6"
+      ]
+    },
+    "train-a-turn-v1": {
+      "split": "train",
+      "cases": 50,
+      "ok": 50,
+      "failed": 0,
+      "not_run_yet": 0,
+      "code_commits": [
+        "a808485e85e1ed8ffcad1ee001ec8524967e4250"
+      ]
+    }
+  },
+  "rows": 250,
+  "ok": 241,
+  "failed": 9,
+  "failed_cases": {
+    "train-v1_019": "tracer froze: no change in 598 of 600 s (tracer solver skipped its iterations)",
+    "train-v1_028": "tracer froze: no change in 434 of 600 s (tracer solver skipped its iterations)",
+    "train-v1_043": "tracer froze: no change in 543 of 600 s (tracer solver skipped its iterations)",
+    "train-v1_058": "tracer froze: no change in 596 of 600 s (tracer solver skipped its iterations)",
+    "train-v1_064": "tracer froze: no change in 514 of 600 s (tracer solver skipped its iterations)",
+    "train-v1_067": "tracer froze: no change in 458 of 600 s (tracer solver skipped its iterations)",
+    "train-v1_070": "tracer froze: no change in 396 of 600 s (tracer solver skipped its iterations)",
+    "train-v1_082": "tracer froze: no change in 485 of 600 s (tracer solver skipped its iterations)",
+    "train-v1_121": "tracer froze: no change in 146 of 600 s (tracer solver skipped its iterations)"
+  },
+  "problems": {
+    "train-v1_019": [
+      "tracer froze: no change in 598 of 600 s (tracer solver skipped its iterations)"
+    ],
+    "train-v1_028": [
+      "tracer froze: no change in 434 of 600 s (tracer solver skipped its iterations)"
+    ],
+    "train-v1_043": [
+      "tracer froze: no change in 543 of 600 s (tracer solver skipped its iterations)"
+    ],
+    "train-v1_058": [
+      "tracer froze: no change in 596 of 600 s (tracer solver skipped its iterations)"
+    ],
+    "train-v1_064": [
+      "tracer froze: no change in 514 of 600 s (tracer solver skipped its iterations)"
+    ],
+    "train-v1_067": [
+      "tracer froze: no change in 458 of 600 s (tracer solver skipped its iterations)"
+    ],
+    "train-v1_070": [
+      "tracer froze: no change in 396 of 600 s (tracer solver skipped its iterations)"
+    ],
+    "train-v1_082": [
+      "tracer froze: no change in 485 of 600 s (tracer solver skipped its iterations)"
+    ],
+    "train-v1_121": [
+      "tracer froze: no change in 146 of 600 s (tracer solver skipped its iterations)"
+    ]
+  }
+}
