@@ -621,3 +621,12 @@ Template:
   - Found a numerical fault while checking the curves. In 9 of the 50 same-wall cases, the method B tracer froze: it barely moved and replaced only 1–15 % of what method A gives. The cause is the tracer solver's tolerance (1e-7, relTol 0), which skips the iterations in weak flows. The writer marks these rows `failed`. The other 41 B cases agree with A as in the benchmark; no other A curve is affected (checked by the jitter of the 1 s steps).
   - Wrote the first CSV (250 rows, 241 ok, 9 failed), the data dictionary `results/README.md` for teammates, and updated PLAN.md §9, DATASET_PLAN.md, AGENTS.md and README.md.
 - **Human decisions / review:** Daniel asked for a first consolidated training CSV once the runs had finished. The fix of the tracer settings and the rerun of the 9 cases are proposed, not yet decided.
+
+## 2026-10-20 — Overview refreshed
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:** Brought the one-page overview `docs/overview/overview.tex` up to date, on top of Daniel's own uncommitted edits to it, and rebuilt the PDF; it still fits on one page.
+  - Status date; step times on the simulation PC, including the exact method for same-wall cases (~1.5 h); the ML box now says 250 training and 30 test rows.
+  - Checks: the same-wall mesh result with its ±15 % uncertainty, and a new row for the automatic check of every result (9 of 250 failed because the tracer froze).
+  - "Where we are": the 250 training simulations on the simulation PC, the first training table with 241 usable rows, and the next steps.
+- **Human decisions / review:** Daniel asked for the refresh. The overview is left uncommitted for him to review, since it contains his own edits.
