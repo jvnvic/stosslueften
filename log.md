@@ -629,4 +629,5 @@ Template:
   - Status date; step times on the simulation PC, including the exact method for same-wall cases (~1.5 h); the ML box now says 250 training and 30 test rows.
   - Checks: the same-wall mesh result with its ±15 % uncertainty, and a new row for the automatic check of every result (9 of 250 failed because the tracer froze).
   - "Where we are": the 250 training simulations on the simulation PC, the first training table with 241 usable rows, and the next steps.
+- **Follow-up:** Daniel shortened the text, added the team names and narrowed the picture. On his request the AI then spread the free space between the blocks (more space above headings, in the table and between status lines) while keeping one page.
 - **Human decisions / review:** Daniel asked for the refresh. The overview is left uncommitted for him to review, since it contains his own edits.
