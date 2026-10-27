@@ -641,4 +641,5 @@ Template:
   - Added its run file, started it on the simulation PC (`hpc/control.yaml`: run, `[train-a-v2]`) and checked that the runner picked it up.
   - Launched the monitor window on the laptop.
   - Updated PLAN.md §9, DATASET_PLAN.md, AGENTS.md and README.md.
+  - Found two runners active on the PC (start events at 08:21:44 and 08:24:05; each started two cases): the systemd service plus a copy started by hand with `run_runner.sh`. Asked Daniel to stop the hand-started one; the service takes over its cases when they finish.
 - **Human decisions / review:** Daniel decided on 300 more fast-method cases with 75 % turned and 25 % tilted windows, and restarted the simulation PC. The run uses the current tracer settings (the fix is still open, PLAN.md §9).
