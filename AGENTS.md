@@ -11,10 +11,10 @@ This is a uni project for the Master's course *Machine Learning* (Hochschule Han
 - [VENTILATION_CFD_PROJECT.md](VENTILATION_CFD_PROJECT.md) is the original background spec. PLAN.md wins wherever they differ.
 - [DATASET_PLAN.md](DATASET_PLAN.md) plans the sweep generator (built) and the dataset writer (next).
 - [HPC_PLAN.md](HPC_PLAN.md) plans the remote sweep runner (Windows/WSL2 PC, control and status through GitHub). It is built and runs on the simulation PC (`hpc/`, operations guide `hpc/README.md`).
-- Status (2026-10-19):
+- Status (2026-10-27):
   - The pipeline is verified (PLAN.md §5–6). Decision M1: method B for same-wall cases, A otherwise; `cfd.run_case` applies it.
-  - The inputs and CSV columns are decided and frozen (PLAN.md §2–3). The runs `train-v1` (150), `train-a-v1` and `train-a-turn-v1` (50 extra method A cases each) and `test-v1` (30) are drawn in `configs/sweep/`.
-  - The remote runner and dashboard (`hpc/`) run on the simulation PC. `train-v1`, `train-a-v1` and `train-a-turn-v1` are done (250 cases).
+  - The inputs and CSV columns are decided and frozen (PLAN.md §2–3). The runs `train-v1` (150), `train-a-v1` and `train-a-turn-v1` (50 extra method A cases each), `train-a-v2` (300 extra method A cases) and `test-v1` (30) are drawn in `configs/sweep/`.
+  - The remote runner and dashboard (`hpc/`) run on the simulation PC. `train-v1`, `train-a-v1` and `train-a-turn-v1` are done (250 cases); `train-a-v2` runs since 2026-10-27.
   - The first training CSV is in `results/` (241 ok, 9 failed: a frozen tracer in weak same-wall flows).
   - **Next: fix the tracer solver settings, rerun the 9 cases, run `test-v1`**; see PLAN.md §9.
 - Deadline: less than 6 weeks from 2026-10-14.
@@ -120,7 +120,7 @@ python -m sweeps.dataset --hpc --runs train-v1 train-a-v1 train-a-turn-v1   # re
 - `analysis/visualize.py` reads a solved case with PyVista. It renders top views at window height (air speed with streamlines, or the tracer), the mesh (cuts coloured by cell size and the surface grid), and plots the replacement curve with matplotlib.
 - `sweeps/dataset.py` writes `results/` (frozen columns of PLAN.md §3) from the `hpc-results` and `hpc-status` branches (`--hpc`) or from local case folders (`--cases`). It checks every case; known faults (frozen tracer, broken curve) become `failed` rows. `results/README.md` is the hand-written data dictionary for teammates.
 - `sweeps/generate.py` draws a run's cases from `configs/sweep/<run>/spec.yaml`: a Latin hypercube per layout (all three, or those in the optional key `layouts`), interleaved layouts, position redraws for overlapping windows. It writes the case files, `manifest.json` and `coverage.png`. `sweeps/queues.py` splits a run into balanced `cfd.queue` lists, with same-wall (B) cases first.
-- `configs/sweep/train-v1/` (150 cases) and `configs/sweep/test-v1/` (30 cases) are the dataset runs (decided 2026-10-16). `configs/sweep/train-a-v1/` adds 50 training cases on opposite and adjacent walls (method A, 2026-10-18), `configs/sweep/train-a-turn-v1/` 50 more with turned windows only (`turn_share: 1`).
+- `configs/sweep/train-v1/` (150 cases) and `configs/sweep/test-v1/` (30 cases) are the dataset runs (decided 2026-10-16). `configs/sweep/train-a-v1/` adds 50 training cases on opposite and adjacent walls (method A, 2026-10-18), `configs/sweep/train-a-turn-v1/` 50 more with turned windows only (`turn_share: 1`), `configs/sweep/train-a-v2/` 300 more with 75 % turned windows (2026-10-27).
 - `hpc/` is the sweep runner for the simulation PC (HPC_PLAN.md, operations: `hpc/README.md`).
   - Control comes from `hpc/control.yaml` and `hpc/runs/*.yaml` on `main`. The loop is in `runner.py`, its memory in `~/hpc/state.json` (`state.py`), and cases are handled by `jobs.py`.
   - Each case runs as `python -P -m cfd.run_case` with the run's pinned code on PYTHONPATH, in its own process group.

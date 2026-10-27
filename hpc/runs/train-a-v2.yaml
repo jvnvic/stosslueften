@@ -1,0 +1,9 @@
+# Run train-a-v2 for the sweep runner (hpc/README.md, HPC_PLAN.md §4). Cases: configs/sweep/train-a-v2/ (sweeps.generate).
+run_id: train-a-v2
+configs: configs/sweep/train-a-v2/train-a-v2_*.yaml
+code: main            # resolved to a commit when the run starts; all its cases use that commit
+slots: 2              # cases at the same time (2 x 4 cores is best on the simulation PC, HPC_PLAN.md §8)
+procs_per_case: 4
+retries: 1
+timeout_a_min: 45
+timeout_b_min: 300

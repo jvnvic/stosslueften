@@ -632,3 +632,13 @@ Template:
 - **Follow-up:** Daniel shortened the text, added the team names and narrowed the picture. On his request the AI then spread the free space between the blocks (more space above headings, in the table and between status lines) while keeping one page.
 - **Course questions:** Daniel checked the overview against the course's four questions: technical problem, simulation model, inputs and outputs, suitability for an ML surrogate. The AI found the model and the suitability missing and the problem only implicit, suggested answers, and on Daniel's "yes" added them on the same page: a problem statement in the Goal, the hinge side as an input, and two short sections, *Simulation model* (incompressible, isothermal RANS with k-ω SST, atmospheric wind profile, passive-scalar dye, steady vs. unsteady by layout) and *Why an ML surrogate?* (cost per simulation vs. instant answers, size of the input space, smooth physical relationships, known uncertainty). To keep one page, the check rows were merged into four and the pictures made a little smaller.
 - **Human decisions / review:** Daniel asked for the refresh. The overview is left uncommitted for him to review, since it contains his own edits.
+
+## 2026-10-27 — Extra training run `train-a-v2` (300 method A cases)
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Drew `train-a-v2`: 300 cases, 150 with windows on opposite walls and 150 on adjacent walls, with `turn_share: 0.75` (exactly 450 of 600 windows turned) and seed 20261027.
+  - Added its run file, started it on the simulation PC (`hpc/control.yaml`: run, `[train-a-v2]`) and checked that the runner picked it up.
+  - Launched the monitor window on the laptop.
+  - Updated PLAN.md §9, DATASET_PLAN.md, AGENTS.md and README.md.
+- **Human decisions / review:** Daniel decided on 300 more fast-method cases with 75 % turned and 25 % tilted windows, and restarted the simulation PC. The run uses the current tracer settings (the fix is still open, PLAN.md §9).

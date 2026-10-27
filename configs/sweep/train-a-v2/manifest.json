@@ -1,0 +1,78 @@
+{
+  "run_id": "train-a-v2",
+  "split": "train",
+  "n_cases": 300,
+  "spec": {
+    "run_id": "train-a-v2",
+    "split": "train",
+    "n_cases": 300,
+    "layouts": [
+      "opposite_walls",
+      "adjacent_walls"
+    ],
+    "seed": 20261027,
+    "base_config": "configs/default.yaml",
+    "turn_share": 0.75,
+    "turn_angle_deg": [
+      15,
+      90
+    ],
+    "tilt_angle_deg": 6,
+    "hinge": "sampled",
+    "wind_speed_ms": [
+      1,
+      5
+    ]
+  },
+  "cases_per_layout": {
+    "opposite_walls": 150,
+    "adjacent_walls": 150
+  },
+  "cases_per_method": {
+    "B": 0,
+    "A": 300
+  },
+  "position_redraws": {
+    "opposite_walls": 0,
+    "adjacent_walls": 0
+  },
+  "coverage": {
+    "window1_x_m": {
+      "min": 0.714,
+      "max": 4.3,
+      "mean": 2.5
+    },
+    "window2_x_m": {
+      "min": 0.717,
+      "max": 4.295,
+      "mean": 2.251
+    },
+    "window1_angle_deg (turned)": {
+      "min": 15.2,
+      "max": 89.8,
+      "mean": 52.681
+    },
+    "window2_angle_deg (turned)": {
+      "min": 15.2,
+      "max": 89.9,
+      "mean": 52.356
+    },
+    "wind_speed_ms": {
+      "min": 1.0,
+      "max": 5.0,
+      "mean": 3.0
+    },
+    "mode_pairs": {
+      "tilt/tilt": 17,
+      "tilt/turn": 57,
+      "turn/tilt": 59,
+      "turn/turn": 167
+    },
+    "hinges_of_turned_windows": {
+      "left": 226,
+      "right": 224
+    }
+  },
+  "git_commit": "d0fe82cd2a7286eb513ec1ce32b1e5af19c5163f",
+  "created_utc": "2026-10-27T08:30:43Z"
+}

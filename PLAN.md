@@ -281,6 +281,8 @@ Findings:
 - Cause: the tracer solver settings (`C`: tolerance 1e-7, relTol 0, in `cfd/templates/tracer/` and `transient/`). The solver skips its iterations when the first residual is already below the tolerance. In very weak flows (all 9 are same-wall cases with weak room flow, mostly tilted windows) that happens nearly every time step, so the tracer stays as it was.
 - The dataset writer detects it (more than 10 s without any change) and writes these rows as `failed`.
 
+- **Extra training run `train-a-v2`** (Daniel, 2026-10-27): 300 more method A cases, 150 on opposite and 150 on adjacent walls, with 75 % of the windows turned and 25 % tilted (`turn_share: 0.75`). Started on the simulation PC on 2026-10-27, about 20 h. It runs with the current tracer settings: in the 200 method A cases so far no tracer froze, and the dataset writer would flag any that does.
+
 Next, in this order:
 1. **Fix the tracer solver settings** in both templates, e.g. `minIter 1` and a much smaller tolerance. Verify on `train-v1_019` (methods A and B) and check that an unaffected case keeps its result.
 2. **Rerun the 9 cases** with the fix: method B, about 1.5 h each, so about 7 h on the simulation PC. The runner only reruns failed cases, so this needs a small addition (e.g. a rerun run with the same configs).
