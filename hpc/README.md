@@ -21,7 +21,7 @@ GitHub app                ◀── one issue per run   (failures, self-pauses, 
 
    - It becomes a systemd service. It starts with WSL, restarts after errors, and keeps running cases alive while it restarts.
    - While `hpc/control.yaml` says `state: pause`, it only publishes its status.
-3. **Switch on GitHub Pages.** The runner's first status creates the branch `hpc-status` after about 1 minute. Then go to *Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch `hpc-status`, folder `/ (root)` → Save*.
+3. **Switch on GitHub Pages** (switched off on 2026-11-05: every status push started a Pages build on GitHub Actions, about 300 per day. That is free for a public repository, but check before switching it on again). The runner's first status creates the branch `hpc-status` after about 1 minute. Then go to *Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch `hpc-status`, folder `/ (root)` → Save*.
    - The dashboard appears at **https://jvnvic.github.io/stosslueften/** after 1–2 minutes.
 4. **Optional, notifications:** add the issue token ([setup/README.md](setup/README.md) step 9), then run `sudo systemctl restart stosslueften-runner`.
 5. **Buttons on the dashboard:** create a token once and save it on each device you use (phone, laptop):

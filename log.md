@@ -643,3 +643,12 @@ Template:
   - Updated PLAN.md §9, DATASET_PLAN.md, AGENTS.md and README.md.
   - Found two runners active on the PC (start events at 08:21:44 and 08:24:05; each started two cases): the systemd service plus a copy started by hand with `run_runner.sh`. Asked Daniel to stop the hand-started one; the service takes over its cases when they finish.
 - **Human decisions / review:** Daniel decided on 300 more fast-method cases with 75 % turned and 25 % tilted windows, and restarted the simulation PC. The run uses the current tracer settings (the fix is still open, PLAN.md §9).
+
+## 2026-11-05 — GitHub Pages switched off
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Checked GitHub usage: since 2026-10-16 the repository had 3,890 workflow runs, almost all *pages build and deployment*. Every status push of the runner (about every 6 min, also when idle) started one, about 300 per day. GitHub's timing data for these runs showed 0 billable minutes, because the repository is public. The account's billing page could not be read with the AI's login.
+  - Switched GitHub Pages off (repository settings, via the GitHub API), so the pushes no longer start any workflow. Confirmed that no run was in progress and that the next status push started none.
+  - Updated README.md, hpc/README.md and PLAN.md: the dashboard is offline; the runner keeps pushing its branches, which costs nothing.
+- **Human decisions / review:** Daniel saw costs on GitHub that he had not been told about and asked to stop whatever caused them. The AI had not mentioned the GitHub usage when it built the dashboard.

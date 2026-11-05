@@ -266,7 +266,7 @@ Findings:
 - Input decisions (§2) and the frozen CSV columns (§3, M2).
 - The sweep generator. `train-v1` (150 cases) and `test-v1` (30) are drawn in `configs/sweep/`.
 - The simulation PC is set up (HPC_PLAN.md §8) and the remote runner with its dashboard is running there.
-  - Dashboard: https://jvnvic.github.io/stosslueften/, with buttons that start the "Runner control" workflow.
+  - Dashboard: https://jvnvic.github.io/stosslueften/, with buttons that start the "Runner control" workflow. **Switched off on 2026-11-05** (GitHub Pages disabled after Daniel saw GitHub costs); the runner still pushes its status and results branches. Without it, control `hpc/control.yaml` by hand or via *Actions → Runner control*, and watch with `python -m hpc.show --watch` on the PC.
   - Guide: `hpc/README.md`.
 - **`train-v1` ran on the simulation PC:** 150 of 150 done, 0 failed, 48 h (finished 2026-10-18 09:08).
 - **Extra training run `train-a-v1`** (Daniel, 2026-10-18): 50 more method A cases, 25 with windows on opposite walls and 25 on adjacent walls (corner). Same input ranges as `train-v1`, own seed. Done: 50 of 50, 0 failed.
