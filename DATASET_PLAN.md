@@ -1,6 +1,6 @@
 # Dataset plan: sweep generator and dataset writer
 
-Status: **decisions approved 2026-10-16** (§5). The two fixes (§1) are in `main`; the sweep generator (§2) is built and has drawn `train-v1` (150 cases), `test-v1` (30 cases) and the extra method A runs `train-a-v1` and `train-a-turn-v1` (50 cases each, opposite and adjacent walls only, the second with turned windows only, 2026-10-18), and `train-a-v2` (300 cases on the same two layouts, 75 % turned windows, 2026-10-27). The dataset writer (§3) is built and wrote the first training CSV on 2026-10-19 (250 rows, 9 failed because of a frozen tracer, PLAN.md §9). The background is in PLAN.md §2–3 (inputs and columns) and §5 (method by layout).
+Status: **decisions approved 2026-10-16** (§5). The two fixes (§1) are in `main`; the sweep generator (§2) is built and has drawn `train-v1` (150 cases), `test-v1` (30 cases) and the extra method A runs `train-a-v1` and `train-a-turn-v1` (50 cases each, opposite and adjacent walls only, the second with turned windows only, 2026-10-18), and `train-a-v2` (300 cases on the same two layouts, 75 % turned windows, 2026-10-27). The dataset writer (§3) is built and wrote the first training CSV on 2026-10-19 (250 rows, 9 failed because of a frozen tracer, PLAN.md §9), and the full training set `results/dataset_550/dataset_550.csv` on 2026-11-11 (550 rows, 541 ok). The background is in PLAN.md §2–3 (inputs and columns) and §5 (method by layout).
 
 The chain from inputs to the CSV:
 

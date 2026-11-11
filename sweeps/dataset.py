@@ -3,14 +3,18 @@
 Usage, from the repository root (any OS; OpenFOAM is not needed):
     python -m sweeps.dataset --hpc --runs train-v1 train-a-v1 train-a-turn-v1
     python -m sweeps.dataset --runs train-v1 --cases cases     # cases run on this machine with cfd.queue
+    python -m sweeps.dataset --hpc --runs train-v1 train-a-v1 train-a-turn-v1 train-a-v2 \
+        --out results/dataset_550 --name dataset_550          # a separate dataset in its own folder
 
 --hpc fetches two branches from origin and reads them without checking anything out:
 hpc-results (the result files of every case) and hpc-status (machine, code commit and finish
 time of every case). With --cases, the case folders are read from that folder instead
 (<cases>/<run_id>/<case_id>/ or <cases>/<case_id>/), and those four columns stay empty.
 
-Writes, from scratch every time (results/README.md, the data dictionary, is kept):
+Writes, from scratch every time, into --out (default results/; results/README.md, the data
+dictionary, is kept):
     results/summary.csv               one row per case, the frozen columns of PLAN.md §3
+                                      (--name sets another file name)
     results/timeseries/<case_id>.csv  time_s, fresh_fraction every 1 s from 0 to 600 s (ok rows)
     results/dataset_info.json         runs, code commits, counts and the problems found
 
@@ -233,11 +237,12 @@ def build_row(case: Case) -> tuple[dict, np.ndarray | None]:
 
 # --- writing -----------------------------------------------------------------------------------
 
-def write(out: Path, rows: list[dict], curves: dict[str, np.ndarray], info: dict) -> None:
+def write(out: Path, rows: list[dict], curves: dict[str, np.ndarray], info: dict,
+          name: str = "summary") -> None:
     out.mkdir(parents=True, exist_ok=True)
     shutil.rmtree(out / "timeseries", ignore_errors=True)
     (out / "timeseries").mkdir()
-    with (out / "summary.csv").open("w", newline="", encoding="utf-8") as f:
+    with (out / f"{name}.csv").open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(COLUMNS)
         for row in sorted(rows, key=lambda r: r["case_id"]):
@@ -290,6 +295,7 @@ def main(argv=None) -> None:
     source.add_argument("--cases", type=Path, help="folder with the case folders (e.g. cases)")
     parser.add_argument("--configs", type=Path, default=Path("configs/sweep"), help="where the runs are drawn")
     parser.add_argument("--out", type=Path, default=Path("results"))
+    parser.add_argument("--name", default="summary", help="name of the CSV in --out, without .csv")
     parser.add_argument("--strict", action="store_true", help="stop on any problem, write nothing")
     args = parser.parse_args(argv)
 
@@ -302,8 +308,8 @@ def main(argv=None) -> None:
             print(f"  {case_id}: {problem}")
     if args.strict and info["problems"]:
         raise SystemExit(f"--strict: {len(info['problems'])} case(s) with problems, nothing written")
-    write(args.out, rows, curves, info)
-    print(f"wrote {args.out}/summary.csv: {info['rows']} rows, {info['ok']} ok, {info['failed']} failed")
+    write(args.out, rows, curves, info, args.name)
+    print(f"wrote {args.out}/{args.name}.csv: {info['rows']} rows, {info['ok']} ok, {info['failed']} failed")
     for run_id, run in info["runs"].items():
         print(f"  {run_id} ({run['split']}): {run['ok']} ok, {run['failed']} failed, {run['not_run_yet']} not run yet")
 

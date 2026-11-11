@@ -6,13 +6,21 @@ Each row is one CFD simulation. A room (5 m × 4 m × 2.5 m) has two windows, wi
 
 | File | Content |
 |---|---|
-| `summary.csv` | One row per simulation: the inputs, the results and some bookkeeping. **Start here.** |
+| `dataset_550/dataset_550.csv` | **The full training set: all 550 simulations in one file.** Same columns as `summary.csv`. **Start here.** Its folder has its own `timeseries/` and `dataset_info.json`. |
+| `summary.csv` | The first training set: one row per simulation (250), the inputs, the results and some bookkeeping. All its rows are also in `dataset_550.csv`. |
 | `timeseries/<case_id>.csv` | The full air-replacement curve of one simulation: `time_s, fresh_fraction`, one value per second from 0 to 600 s (only rows with `status = ok`). |
 | `dataset_info.json` | When the files were made, from which runs and code versions, and the problems found. |
 
-Plain CSV: UTF-8, comma-separated, decimal point. Load it with `pandas.read_csv("results/summary.csv")`, or open it in Excel / LibreOffice (choose comma as separator).
+Plain CSV: UTF-8, comma-separated, decimal point. Load it with `pandas.read_csv("results/dataset_550/dataset_550.csv")`, or open it in Excel / LibreOffice (choose comma as separator).
 
-## What is in it now (2026-10-19)
+## What is in `dataset_550.csv` (2026-11-11)
+
+- **550 training simulations** from four runs: the 250 of `summary.csv` (below) and `train-a-v2`, 300 more cases with windows on opposite or adjacent walls, three quarters of the windows turned.
+- **541 rows are `ok`, 9 are `failed`**: the same 9 same-wall cases as in `summary.csv`. Leave them out for training.
+- Usable rows by layout: 250 `opposite_walls`, 250 `adjacent_walls`, 41 `same_wall`. Windows: 746 turned, 336 tilted. Same-wall cases are rare here, so a model will be least reliable for them.
+- The test set (`test-v1`) has not run yet, as below.
+
+## What is in `summary.csv` (2026-10-19)
 
 - **250 training simulations** from three runs, all on the simulation PC:
   - `train-v1`: 150 cases, a third for each layout.

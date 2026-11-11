@@ -653,3 +653,13 @@ Template:
   - Updated README.md, hpc/README.md and PLAN.md: the dashboard is offline; the runner keeps pushing its branches, which costs nothing.
   - After Daniel gave the AI's login billing read access, read the account's usage: the Pages builds used 8,865 Actions minutes in October and 2,943 in November (list price $53.19 and $17.66). Both are fully discounted because the repository is public, so the net charge is $0. All other items on the account are $0 as well.
 - **Human decisions / review:** Daniel saw costs on GitHub that he had not been told about and asked to stop whatever caused them. The AI had not mentioned the GitHub usage when it built the dashboard.
+
+## 2026-11-11 — Full training set `dataset_550`
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Found that the results of `train-a-v2` were on GitHub after all: on the `hpc-results` branch (all 300 cases, last push 2026-10-28 04:06), not on `main`.
+  - Added the option `--name` to the dataset writer (`sweeps/dataset.py`), so a dataset can get its own file name in its own folder, with a test.
+  - Wrote `results/dataset_550/`: `dataset_550.csv` with all 550 training cases of the four runs (541 ok, the same 9 failed as before), plus `timeseries/` and `dataset_info.json`. Checked that the 250 rows of `results/summary.csv` and their curves are identical in the new set; `summary.csv` stays unchanged.
+  - Updated `results/README.md` (data dictionary), README.md, AGENTS.md, PLAN.md §9 and DATASET_PLAN.md.
+- **Human decisions / review:** Daniel asked for all 550 rows in one separate file named `dataset_550`.

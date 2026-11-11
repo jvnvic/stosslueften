@@ -137,3 +137,12 @@ def test_a_case_without_summary_is_failed_with_the_runner_error(run, tmp_path):
     rows, _ = _write(run, tmp_path, status)
     assert rows["r_001"]["status"] == "failed" and rows["r_001"]["error_message"] == "timeout after 45 min"
     assert rows["r_001"]["machine"] == "pc" and rows["r_001"]["tau_s"] == ""
+
+
+def test_name_sets_the_csv_file_name(run, tmp_path):
+    configs, cases = run
+    out = tmp_path / "dataset_550"
+    dataset.main(["--runs", "r", "--cases", str(cases), "--configs", str(configs),
+                  "--out", str(out), "--name", "dataset_550"])
+    assert (out / "dataset_550.csv").read_text().splitlines()[0] == FROZEN
+    assert not (out / "summary.csv").exists() and (out / "timeseries" / "r_001.csv").exists()

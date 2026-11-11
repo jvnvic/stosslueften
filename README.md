@@ -16,14 +16,14 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | Tracer (air replacement) and metrics | ✅ runs on the frozen steady flow |
 | Solver benchmark: comparison with a fully transient run | ✅ decided: fast method for windows on different walls, exact method for the same wall (see below) |
 | Mesh study | ✅ snappyHexMesh, medium cell sizes (see PLAN.md §6) |
-| Parameter sweep, dataset | 🟡 **first training dataset ready: [results/](results/README.md)**, 250 simulations, 241 usable. 9 same-wall cases need a rerun (frozen tracer, PLAN.md §9). 300 more fast-method cases running (`train-a-v2`); the 30 test cases follow |
+| Parameter sweep, dataset | 🟡 **training dataset ready: [results/dataset_550/](results/README.md)**, 550 simulations, 541 usable. 9 same-wall cases need a rerun (frozen tracer, PLAN.md §9); the 30 test cases follow |
 | Remote runner and dashboard for the simulation PC | ✅ running on the simulation PC ([hpc/README.md](hpc/README.md)). The web dashboard is switched off (GitHub Pages, 2026-11-05) |
 
 ## The dataset
 
-[results/summary.csv](results/summary.csv) has one row per simulation: the window setup and wind (inputs) and how fast the air is replaced (results). [results/README.md](results/README.md) explains every column. Load it with `pandas.read_csv("results/summary.csv")` or open it in Excel / LibreOffice. Use only rows with `status = ok`.
+[results/dataset_550/dataset_550.csv](results/dataset_550/dataset_550.csv) has one row per simulation, 550 in total: the window setup and wind (inputs) and how fast the air is replaced (results). [results/README.md](results/README.md) explains every column. Load it with `pandas.read_csv("results/dataset_550/dataset_550.csv")` or open it in Excel / LibreOffice. Use only rows with `status = ok`. The older [results/summary.csv](results/summary.csv) holds the first 250 of these rows.
 
-It is rebuilt from the simulation PC's results with `python -m sweeps.dataset --hpc --runs train-v1 train-a-v1 train-a-turn-v1` (any OS, needs git access to the repository).
+The simulation PC pushes each finished case to the branch `hpc-results` (switch the branch on GitHub to browse them). The CSV is rebuilt from there with `python -m sweeps.dataset --hpc --runs train-v1 train-a-v1 train-a-turn-v1 train-a-v2 --out results/dataset_550 --name dataset_550` (any OS, needs git access to the repository).
 
 ## First result
 
@@ -177,7 +177,7 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 | `tests/` | Automated tests |
 | `hpc/` | Remote sweep runner and dashboard ([hpc/README.md](hpc/README.md)); `hpc/setup/` sets up the simulation PC |
 | `cases/` | Generated simulation folders (not in git) |
-| `results/` | The dataset: `summary.csv`, the curves in `timeseries/`, the data dictionary `README.md` |
+| `results/` | The dataset: `dataset_550/` (all 550 training cases), the first 250 in `summary.csv` with the curves in `timeseries/`, the data dictionary `README.md` |
 
 ## Documentation
 

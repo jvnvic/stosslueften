@@ -282,6 +282,8 @@ Findings:
 - The dataset writer detects it (more than 10 s without any change) and writes these rows as `failed`.
 
 - **Extra training run `train-a-v2`** (Daniel, 2026-10-27): 300 more method A cases, 150 on opposite and 150 on adjacent walls, with 75 % of the windows turned and 25 % tilted (`turn_share: 0.75`). Started on the simulation PC on 2026-10-27, about 20 h. It runs with the current tracer settings: in the 200 method A cases so far no tracer froze, and the dataset writer would flag any that does.
+  - Done: 300 of 300, 0 failed (finished 2026-10-28 04:06). The writer found no frozen tracer; two cases (`_121`, `_171`) dip slightly below 0 (−0.03, −0.04) and stay `ok`.
+- **Full training set `results/dataset_550/`** (2026-11-11): `dataset_550.csv` with all 550 training cases (`train-v1`, `train-a-v1`, `train-a-turn-v1`, `train-a-v2`), 541 `ok` and the same 9 `failed`, plus its own `timeseries/` and `dataset_info.json`. A separate folder; `results/summary.csv` (250 rows) stays as it was, and its rows are identical in `dataset_550.csv`.
 
 Next, in this order:
 1. **Fix the tracer solver settings** in both templates, e.g. `minIter 1` and a much smaller tolerance. Verify on `train-v1_019` (methods A and B) and check that an unaffected case keeps its result.
