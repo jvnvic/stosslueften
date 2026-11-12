@@ -18,7 +18,7 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | Mesh study | ✅ snappyHexMesh, medium cell sizes (see PLAN.md §6) |
 | Parameter sweep, dataset | 🟡 **training dataset ready: [results/dataset_550/](results/README.md)**, 550 simulations, 541 usable. 9 same-wall cases need a rerun (frozen tracer, PLAN.md §9); the 30 test cases follow |
 | Remote runner and dashboard for the simulation PC | ✅ running on the simulation PC ([hpc/README.md](hpc/README.md)). The web dashboard is switched off (GitHub Pages, 2026-11-05) |
-| ML surrogate model | 🟡 started: one notebook per model version in [ml/](ml/README.md). v0 (seminar template, t90 directly), v1 (τ, then t90) and v2 (log wind speed as input) are done |
+| ML surrogate model | 🟡 started: one notebook per model version in [ml/](ml/README.md). v0 (seminar template, t90 directly), v1 (τ, then t90), v2 (log wind speed as input) and v3 (cross-validation and tuning, seminar unit 4) are done |
 
 ## The dataset
 

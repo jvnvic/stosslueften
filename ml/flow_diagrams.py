@@ -86,7 +86,29 @@ VERSIONS = {
         "note": ("v2: log(wind speed)", "τ ~ 1 / wind speed is a\nstraight line between\nlog(τ) and log(wind)."),
         "new": {"train 2", "predict 2"},
     },
+    "v3_cv_tuning": {
+        "data": None,
+        "train": [
+            ("Development data", "the 432 training cases"),
+            ("Inputs, targets", "X: 10 setup values\ny: log(τ), and for the\nclassifier: t90 > 600 s?"),
+            ("Cross-validation", "5 folds: each model is\nfitted 5 times, scored\non the held-out fold"),
+            ("Grid search", "tree depth, leaf size,\nbest one refitted\non all 432 cases"),
+        ],
+        "predict": [
+            ("Test cases", "all 109, used once,\nafter the selection"),
+            ("Inputs", "X: 10 setup values"),
+            ("Preprocessing", "log(wind), scaling and\ncategories of the\nrefitted pipeline"),
+            ("Best model", "predicts log(τ)"),
+            ("Back to t90", "τ = exp(prediction)\nt90 = ln(10) · τ"),
+            ("Scores", "log(τ) as in unit 4,\nt90 on the 93 (as v0),\nclassification report"),
+        ],
+        "note": ("v3: evaluation and tuning", "Seminar unit 4 with our data:\nmodels and settings chosen\nby cross-validation only."),
+        "new": {"train 1", "train 2", "train 3", "predict 0", "predict 5"},
+        "handover": [(4, "best_estimator_:\nthe whole pipeline,\nrefitted")],
+    },
 }
+
+DEFAULT_HANDOVER = [(3, "fitted scaling\nand categories"), (4, "fitted models")]
 
 
 def box(ax, x, y, title, detail, stage, new_in=None):
@@ -149,8 +171,8 @@ def draw(version, spec, data_steps, out):
                 arrow(ax, (x_of(i) + BOX_W / 2, y), (x_of(i + 1) - BOX_W / 2, y))
 
     # What training hands over to the prediction
-    arrow(ax, (x_of(3), Y_TRAIN - BOX_H / 2), (x_of(3), Y_PREDICT + BOX_H / 2), "fitted scaling\nand categories")
-    arrow(ax, (x_of(4), Y_TRAIN - BOX_H / 2), (x_of(4), Y_PREDICT + BOX_H / 2), "fitted models")
+    for column, label in spec.get("handover", DEFAULT_HANDOVER):
+        arrow(ax, (x_of(column), Y_TRAIN - BOX_H / 2), (x_of(column), Y_PREDICT + BOX_H / 2), label)
 
     # Note on what this version is about, next to the training lane
     title, text = spec["note"]

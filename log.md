@@ -697,3 +697,14 @@ Template:
   - Added a flow diagram of the data, training and prediction steps at the top of every model notebook, with the steps that are new in each version marked. `ml/flow_diagrams.py` draws them with matplotlib into `ml/images/`.
   - Updated `ml/README.md` (v2 row, how to add a diagram), README.md, AGENTS.md and PLAN.md.
 - **Human decisions / review:** Daniel chose log(wind speed) as the change for v2 and asked for a flow diagram at the top of each notebook.
+
+## 2026-11-12 — Model version v3: cross-validation and tuning (seminar unit 4)
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Fast-forwarded Daniel's copy of the course repository (`ml-repo`) to the professor's new unit 4 (model evaluation and tuning, saving and loading pipelines). Daniel's local changes there were not touched.
+  - Wrote `ml/v3_cv_tuning.ipynb`, which applies the unit 4 notebook to our data as closely as possible: the training cases are the development data, a median baseline, Ridge and decision tree compared with 5-fold `KFold` cross-validation, the grid search of unit 4 for the tree, and one final test of `best_estimator_` with the residual plot. Data, target (log τ) and preprocessing (log wind speed) are those of v2. Part 3 of unit 4 is transferred to our data as a classifier for "t90 > 600 s".
+  - Results: the grid search picks depth 8 and leaf size 1 (CV MAE of log τ 0.219, Ridge 0.227, within the variation between folds). On the test cases: t90 MAE 44 s and R² 0.80 on the 93 cases with t90; on log(τ) over all 109 cases, v2's linear model is still slightly better. The classifier (logistic regression, C = 10) finds 13 of the 16 slow test cases with 2 false alarms.
+  - Added v3 to the flow diagrams and recorded the new rule: from v3 on, choices only by cross-validation, the test cases once per version.
+  - Updated `ml/README.md`, README.md, AGENTS.md and PLAN.md.
+- **Human decisions / review:** Daniel chose the MAE of log(τ) as the selection metric before the tuning. When the cross-validation showed a near tie between the tuned tree and the linear model, the AI asked about a tie rule; Daniel decided that v3 stays as close as possible to the professor's notebook, which tests the tuned tree.

@@ -1,0 +1,2 @@
+version,model,MAE [s],RMSE [s],R²,target,n_train,n_test
+v3_cv_tuning,"DecisionTree (depth 8, leaf 1)",43.805,64.199,0.795,log(tau_s),432,93
