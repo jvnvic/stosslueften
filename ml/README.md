@@ -20,13 +20,14 @@ All scores are for t90 on the same 93 test cases (the test cases of the shared s
 | Version | Notebook | What it predicts | Best model | MAE t90 | R² t90 | Notes |
 |---|---|---|---|---|---|---|
 | v0 | [v0_base.ipynb](v0_base.ipynb) | `t90_s` directly; cases without t90 are left out | DecisionTree | 42 s | 0.81 | The seminar template (unit 3). Has seen only 6 same-wall cases; the linear models predict negative t90. |
-| v1 | `v1_tau.ipynb` (next) | log(`tau_s`), then t90 = ln(10) · τ | | | | Uses every case, also those that take longer than 600 s. |
+| v1 | [v1_tau.ipynb](v1_tau.ipynb) | log(`tau_s`) for every case, then t90 = ln(10) · τ | Ridge / LinearRegression | 50 s | 0.70 / 0.71 | Better for fast cases, worse for slow ones. Also covers same-wall and slow cases (τ typically 18 % off) and recognises 6 of 16 "t90 > 600 s" test cases. The tree drops to 58 s. |
+| v2 | next | | | | | Options at the end of v1: log(wind speed) as input, cross-validation, random forest or gradient boosting. |
 
-The scores of each version are also in `results/<version>.csv`, one row per model.
+The scores of each version are also in `results/<version>.csv`, one row per model, and its predictions for the test cases in `results/<version>_test_predictions.csv`. Later versions read these files to compare case by case.
 
 ## Making a new version
 
 1. Copy the latest notebook to `vN_<short name>.ipynb` and set `VERSION` in the first code cell.
 2. Keep sections 2 and 3 (loading the data, the split) unchanged. Otherwise the versions are tested on different cases.
-3. Score t90 on the same test cases, write `results/<version>.csv`, and add a row to the table above.
+3. Score t90 on the same test cases, write `results/<version>.csv` and `results/<version>_test_predictions.csv`, and add a row to the table above.
 4. End the notebook with its findings and what the next version should change.

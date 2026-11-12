@@ -674,3 +674,15 @@ Template:
   - Checked that τ scales almost exactly with 1 / wind speed on different walls (exponent −0.95), which supports predicting log(τ) in v1.
   - Updated README.md, AGENTS.md and PLAN.md.
 - **Human decisions / review:** Daniel decided to structure the model versions in separate notebooks, starting with a base version from the template, and to predict τ and compute t90 from it in the next version.
+
+## 2026-11-12 — Model version v1: predict τ, then t90
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Wrote `ml/v1_tau.ipynb`: the same data, split, inputs and models as v0 (the shared cells are copied verbatim), but the models are fitted on log(τ) for all 432 training cases, and t90 = ln(10) · τ. Checked that this conversion alone costs only about 5 s MAE.
+  - Added scores that v0 cannot give: τ on all 109 test cases (typical error 18 %, same-wall 22 %), and whether the 16 test cases without t90 are recognised as "t90 > 600 s" (linear 6, tree 9, with 1–2 false alarms).
+  - v0 now also saves its test predictions (`ml/results/v0_base_test_predictions.csv`), so v1 compares the error case by case.
+  - Result, reported as it is: on the 93 test cases with t90, v1 is not clearly better. The linear models improve the MAE (53 → 50 s) but lose in R² (0.75 → 0.71); the error halves for fast cases and grows for slow ones, because log(τ) treats errors as relative. The tree gets worse (42 → 58 s), because its depth 4 is too coarse for the wider range.
+  - Corrected its own first version of the factor table: the tilt effect is split between the mode and the hinge column (`hinge = none` always goes with tilt), so both are added up.
+  - Updated `ml/README.md`, README.md, AGENTS.md and PLAN.md.
+- **Human decisions / review:** Daniel chose τ as the target of v1. The options for v2 (log wind speed, cross-validation, random forest or gradient boosting) are listed in the notebook for the team to choose.

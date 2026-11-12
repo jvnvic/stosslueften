@@ -129,7 +129,7 @@ python -m sweeps.dataset --hpc --runs train-v1 train-a-v1 train-a-turn-v1 train-
   - Tests use `fake_case.py` and a local bare repository (`tests/test_hpc.py`).
   - The dashboard's Control panel starts the workflow `.github/workflows/runner-control.yml` (GitHub API, a token with *Actions: write* stored in the browser). The workflow edits `hpc/control.yaml` via `hpc/control_edit.py` and commits it to `main`. It uses no third-party actions.
 - `hpc/setup/` prepares the simulation PC (HPC_PLAN.md phase 0): the guide `README.md`, the install and Windows scripts, the machine check, the reference check against the laptop (`reference.json`) and the throughput measurement.
-- `ml/` holds the ML model versions, one notebook each (`v0_base.ipynb`, …), run in the course environment (`ml/requirements.txt`). Every version keeps the shared train/test split (sections 2–3) unchanged, scores t90 on the same test cases and writes `ml/results/<version>.csv`; `ml/README.md` compares them. Notebooks are committed with their outputs.
+- `ml/` holds the ML model versions, one notebook each (`v0_base.ipynb`, …), run in the course environment (`ml/requirements.txt`). Every version keeps the shared train/test split (sections 2–3) unchanged, scores t90 on the same test cases and writes `ml/results/<version>.csv` and `<version>_test_predictions.csv`; `ml/README.md` compares them. Notebooks are committed with their outputs.
 - `tests/`: pytest.
 - `docs/overview/overview.tex` is a one-page overview for the course (PDF next to it, `latexmk -pdf`). Update it when the status changes significantly.
 - `docs/images/` holds the images used in README.md. Re-render them when the geometry or the examples change.

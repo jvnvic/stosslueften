@@ -1,0 +1,5 @@
+version,model,MAE [s],RMSE [s],R²,target,n_train,n_test
+v1_tau,Mean value (reference),115.568,142.251,-0.007,log(tau_s),432,93
+v1_tau,LinearRegression,50.206,75.951,0.713,log(tau_s),432,93
+v1_tau,Ridge,50.135,77.116,0.704,log(tau_s),432,93
+v1_tau,DecisionTree,57.922,85.315,0.638,log(tau_s),432,93
