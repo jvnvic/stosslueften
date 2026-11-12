@@ -1,0 +1,2 @@
+version,model,MAE [s],RMSE [s],R²,target,n_train,n_test
+v4_ensembles,"GradientBoosting (learning_rate=0.02, max_depth=4, n_estimators=2000)",31.188,46.965,0.890,log(tau_s),432,93

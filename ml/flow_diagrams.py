@@ -106,6 +106,26 @@ VERSIONS = {
         "new": {"train 1", "train 2", "train 3", "predict 0", "predict 5"},
         "handover": [(4, "best_estimator_:\nthe whole pipeline,\nrefitted")],
     },
+    "v4_ensembles": {
+        "data": None,
+        "train": [
+            ("Development data", "the 432 training cases"),
+            ("Inputs and target", "X: 10 setup values\ny: log(τ)"),
+            ("Grid search ×4", "Ridge, tree, random\nforest, boosting;\n5-fold CV each"),
+            ("Selection", "lowest CV error of\nlog(τ), refitted\non all 432 cases"),
+        ],
+        "predict": [
+            ("Test cases", "all 109, used once,\nafter the selection"),
+            ("Inputs", "X: 10 setup values"),
+            ("Preprocessing", "log(wind), scaling and\ncategories of the\nrefitted pipeline"),
+            ("Selected model", "predicts log(τ)"),
+            ("Back to t90", "τ = exp(prediction)\nt90 = ln(10) · τ"),
+            ("Scores", "log(τ) as in unit 4,\nt90 on the 93 (as v0)"),
+        ],
+        "note": ("v4: random forest, boosting", "Two ensemble models join\nRidge and the tree; all four\nare tuned, the best is tested."),
+        "new": {"train 2", "train 3", "predict 3"},
+        "handover": [(4, "best_estimator_ of\nthe selected model,\nrefitted")],
+    },
 }
 
 DEFAULT_HANDOVER = [(3, "fitted scaling\nand categories"), (4, "fitted models")]

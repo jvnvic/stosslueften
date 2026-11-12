@@ -708,3 +708,14 @@ Template:
   - Added v3 to the flow diagrams and recorded the new rule: from v3 on, choices only by cross-validation, the test cases once per version.
   - Updated `ml/README.md`, README.md, AGENTS.md and PLAN.md.
 - **Human decisions / review:** Daniel chose the MAE of log(τ) as the selection metric before the tuning. When the cross-validation showed a near tie between the tuned tree and the linear model, the AI asked about a tie rule; Daniel decided that v3 stays as close as possible to the professor's notebook, which tests the tuned tree.
+
+## 2026-11-12 — Model version v4: random forest and gradient boosting
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Wrote `ml/v4_ensembles.ipynb`: the workflow of v3 (seminar unit 4) without the classification part, with four candidates (Ridge, decision tree, random forest, gradient boosting). Each gets its own `GridSearchCV` with the same 5 folds; the candidate with the lowest CV MAE of log(τ) is tested once.
+  - Extended the gradient-boosting grid (depth up to 6, up to 2000 trees) after a first try had its best value at the edge of the grid; this was decided on the cross-validation only. The notebook shows that the optimum (depth 4) now lies inside the grid.
+  - Results: CV MAE of log(τ) 0.147 for gradient boosting (τ typically 16 % off), 0.182 for the random forest, 0.219–0.221 for the tree and Ridge. On the test cases, gradient boosting reaches a t90 MAE of 31 s and R² 0.89 on the 93 cases with t90, the best of all versions, and recognises 12 of the 16 slow cases without a false alarm.
+  - Checked the largest test errors (reported only): all three are same-wall cases, for which the model predicts too fast an air exchange.
+  - Added v4 to the flow diagrams; updated `ml/README.md`, README.md and PLAN.md.
+- **Human decisions / review:** Daniel chose to add random forest and gradient boosting in v4 and to leave out the classification.
