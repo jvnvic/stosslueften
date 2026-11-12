@@ -719,3 +719,13 @@ Template:
   - Checked the largest test errors (reported only): all three are same-wall cases, for which the model predicts too fast an air exchange.
   - Added v4 to the flow diagrams; updated `ml/README.md`, README.md and PLAN.md.
 - **Human decisions / review:** Daniel chose to add random forest and gradient boosting in v4 and to leave out the classification.
+
+## 2026-11-12 — Model version v5: v4 without same-wall cases
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Wrote `ml/v5_no_same_wall.ipynb`: v4 unchanged (candidates, grids, folds, selection rule), but the same-wall cases are left out after the shared split, so 399 development and 101 test cases remain. The test cases are a subset of v4's, so v4's saved predictions were scored on exactly the same cases (reported only).
+  - Results: gradient boosting is selected again (depth 3, 300 trees, learning rate 0.1; CV MAE of log τ 0.138). On the test cases: t90 MAE 31 s, R² 0.90 on the 92 with t90. On the same cases, v4 (trained with the same-wall cases) is slightly better in every score (t90 MAE 29 s, R² 0.92, 8 instead of 6 of the 9 slow cases found), so leaving out the same-wall cases does not help the other layouts; v4 stays the best model.
+  - Noted in the notebook that two best gradient-boosting settings lie at the edge of the grid but on a flat part (differences far below the fold variation), so the grid was kept.
+  - Added v5 to the flow diagrams; updated `ml/README.md`, README.md and PLAN.md.
+- **Human decisions / review:** Daniel chose to repeat v4 without the same-wall cases.

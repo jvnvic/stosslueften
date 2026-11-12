@@ -1,0 +1,2 @@
+version,model,MAE [s],RMSE [s],R²,target,n_train,n_test
+v5_no_same_wall,"GradientBoosting (learning_rate=0.1, max_depth=3, n_estimators=300)",31.022,43.914,0.904,log(tau_s),399,92

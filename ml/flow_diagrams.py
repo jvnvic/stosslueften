@@ -126,6 +126,26 @@ VERSIONS = {
         "new": {"train 2", "train 3", "predict 3"},
         "handover": [(4, "best_estimator_ of\nthe selected model,\nrefitted")],
     },
+    "v5_no_same_wall": {
+        "data": None,
+        "train": [
+            ("Development data", "the 399 training cases\non different walls\n(33 same-wall left out)"),
+            ("Inputs and target", "X: 10 setup values\ny: log(τ)"),
+            ("Grid search ×4", "Ridge, tree, random\nforest, boosting;\n5-fold CV each"),
+            ("Selection", "lowest CV error of\nlog(τ), refitted\non all 399 cases"),
+        ],
+        "predict": [
+            ("Test cases", "the 101 on different\nwalls, used once\n(8 same-wall left out)"),
+            ("Inputs", "X: 10 setup values"),
+            ("Preprocessing", "log(wind), scaling and\ncategories of the\nrefitted pipeline"),
+            ("Selected model", "predicts log(τ)"),
+            ("Back to t90", "τ = exp(prediction)\nt90 = ln(10) · τ"),
+            ("Scores", "log(τ), t90 on the 92;\nv4 on the same cases"),
+        ],
+        "note": ("v5: without same-wall", "Same as v4, but only windows\non different walls: opposite\nor adjacent (corner)."),
+        "new": {"train 0", "predict 0", "predict 5"},
+        "handover": [(4, "best_estimator_ of\nthe selected model,\nrefitted")],
+    },
 }
 
 DEFAULT_HANDOVER = [(3, "fitted scaling\nand categories"), (4, "fitted models")]
