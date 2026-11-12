@@ -1,0 +1,9 @@
+# Python environment for the model notebooks in ml/ (any OS, Python 3.11 or 3.12).
+# The same versions as the course environment (ml-repo/requirements.txt).
+jupyterlab==4.2.5
+ipykernel==6.29.5
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.5.2
+matplotlib==3.9.2
+scipy==1.13.1

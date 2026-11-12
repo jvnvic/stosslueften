@@ -663,3 +663,14 @@ Template:
   - Wrote `results/dataset_550/`: `dataset_550.csv` with all 550 training cases of the four runs (541 ok, the same 9 failed as before), plus `timeseries/` and `dataset_info.json`. Checked that the 250 rows of `results/summary.csv` and their curves are identical in the new set; `summary.csv` stays unchanged.
   - Updated `results/README.md` (data dictionary), README.md, AGENTS.md, PLAN.md §9 and DATASET_PLAN.md.
 - **Human decisions / review:** Daniel asked for all 550 rows in one separate file named `dataset_550`.
+
+## 2026-11-12 — ML part started: model version v0
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Set up `ml/` for the ML part: one Jupyter notebook per model version, a shared train/test split, a score file per version in `ml/results/`, and `ml/README.md` with the comparison table and the rules for new versions. `ml/requirements.txt` has the same package versions as the course environment.
+  - Wrote `ml/v0_base.ipynb` from the seminar template (unit 3, model training) as adapted by Daniel for our data: target `t90_s`, the 10 setup values as inputs, mean value as reference, LinearRegression, Ridge and DecisionTree in scikit-learn pipelines. Changes to the template: the split is stratified by layout as well (otherwise the test set got only 5 of the 41 same-wall cases); no imputer, because the inputs have no missing values; RMSE and the error per layout added.
+  - Ran it: the DecisionTree is best (MAE 42 s, R² 0.81 on 93 test cases), the linear models reach MAE 53 s and predict negative t90 for fast cases. v0 leaves out the 76 cases without t90, among them 34 of the 41 same-wall cases.
+  - Checked that τ scales almost exactly with 1 / wind speed on different walls (exponent −0.95), which supports predicting log(τ) in v1.
+  - Updated README.md, AGENTS.md and PLAN.md.
+- **Human decisions / review:** Daniel decided to structure the model versions in separate notebooks, starting with a base version from the template, and to predict τ and compute t90 from it in the next version.

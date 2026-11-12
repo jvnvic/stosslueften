@@ -18,6 +18,7 @@ This project runs automated **OpenFOAM** simulations of *Stoßlüften*: opening 
 | Mesh study | ✅ snappyHexMesh, medium cell sizes (see PLAN.md §6) |
 | Parameter sweep, dataset | 🟡 **training dataset ready: [results/dataset_550/](results/README.md)**, 550 simulations, 541 usable. 9 same-wall cases need a rerun (frozen tracer, PLAN.md §9); the 30 test cases follow |
 | Remote runner and dashboard for the simulation PC | ✅ running on the simulation PC ([hpc/README.md](hpc/README.md)). The web dashboard is switched off (GitHub Pages, 2026-11-05) |
+| ML surrogate model | 🟡 started: one notebook per model version in [ml/](ml/README.md). v0 (seminar template, predicts t90 directly) is done; v1 predicts τ next |
 
 ## The dataset
 
@@ -178,6 +179,7 @@ Invalid values stop with a message that says what to fix. `geometry.render` take
 | `hpc/` | Remote sweep runner and dashboard ([hpc/README.md](hpc/README.md)); `hpc/setup/` sets up the simulation PC |
 | `cases/` | Generated simulation folders (not in git) |
 | `results/` | The dataset: `dataset_550/` (all 550 training cases), the first 250 in `summary.csv` with the curves in `timeseries/`, the data dictionary `README.md` |
+| `ml/` | The ML model versions, one Jupyter notebook each, with their scores in `ml/results/` ([ml/README.md](ml/README.md)) |
 
 ## Documentation
 

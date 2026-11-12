@@ -1,0 +1,5 @@
+version,model,MAE [s],RMSE [s],R²,target,n_train,n_test
+v0_base,Mean value (reference),114.969,142.066,-0.005,t90_s,372,93
+v0_base,LinearRegression,53.050,70.382,0.753,t90_s,372,93
+v0_base,Ridge,53.450,73.060,0.734,t90_s,372,93
+v0_base,DecisionTree,42.081,62.447,0.806,t90_s,372,93
