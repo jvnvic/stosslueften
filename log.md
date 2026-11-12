@@ -686,3 +686,14 @@ Template:
   - Corrected its own first version of the factor table: the tilt effect is split between the mode and the hinge column (`hinge = none` always goes with tilt), so both are added up.
   - Updated `ml/README.md`, README.md, AGENTS.md and PLAN.md.
 - **Human decisions / review:** Daniel chose τ as the target of v1. The options for v2 (log wind speed, cross-validation, random forest or gradient boosting) are listed in the notebook for the team to choose.
+
+## 2026-11-12 — Model version v2 (log wind speed) and flow diagrams
+- **Who:** Daniel
+- **AI tool / model:** Claude Code (Claude Opus 5.5)
+- **What the AI did:**
+  - Wrote `ml/v2_log_wind.ipynb`: everything as in v1 (shared cells copied verbatim), but the wind speed enters the models as log(wind speed), as a `FunctionTransformer` step of the pipeline, so it also applies to new data.
+  - Result: the linear models improve in every t90 score (LinearRegression MAE 50 → 47 s, R² 0.71 → 0.75) and recognise 11 instead of 6 of the 16 "t90 > 600 s" test cases. The gain is largest for the fastest and the slowest cases. The model learns τ ∝ (wind speed)^−0.97. v0's tree is still the most accurate on the cases with t90 (MAE 42 s, R² 0.81).
+  - Explained in the notebook why the decision tree does not change (a monotonic transform keeps its splits), and that its importances moved between interchangeable inputs (tilt, 6° angle and `hinge = none` always occur together).
+  - Added a flow diagram of the data, training and prediction steps at the top of every model notebook, with the steps that are new in each version marked. `ml/flow_diagrams.py` draws them with matplotlib into `ml/images/`.
+  - Updated `ml/README.md` (v2 row, how to add a diagram), README.md, AGENTS.md and PLAN.md.
+- **Human decisions / review:** Daniel chose log(wind speed) as the change for v2 and asked for a flow diagram at the top of each notebook.

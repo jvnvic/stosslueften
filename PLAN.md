@@ -289,5 +289,5 @@ Next, in this order:
 1. **Fix the tracer solver settings** in both templates, e.g. `minIter 1` and a much smaller tolerance. Verify on `train-v1_019` (methods A and B) and check that an unaffected case keeps its result.
 2. **Rerun the 9 cases** with the fix: method B, about 1.5 h each, so about 7 h on the simulation PC. The runner only reruns failed cases, so this needs a small addition (e.g. a rerun run with the same configs).
 3. **Run `test-v1`** with the fix: tick it on the dashboard.
-4. **Hand over to the ML part:** `results/README.md` (data dictionary, done) and the uncertainty notes. The ML part has started (2026-11-12): model versions in `ml/`, v0 (seminar template, t90 directly) and v1 (log τ, then t90 = ln(10) · τ) done, see `ml/README.md`.
+4. **Hand over to the ML part:** `results/README.md` (data dictionary, done) and the uncertainty notes. The ML part has started (2026-11-12): model versions in `ml/`, v0 (seminar template, t90 directly), v1 (log τ, then t90 = ln(10) · τ) and v2 (log wind speed as input) done, see `ml/README.md`.
 5. **Still undecided:** exact deadline and deliverables, and the task split in the team. CFD runs only on Daniel's PCs, so teammates could take visualizations, literature and documentation.

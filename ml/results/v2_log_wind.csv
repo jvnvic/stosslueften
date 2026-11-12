@@ -1,0 +1,5 @@
+version,model,MAE [s],RMSE [s],R²,target,n_train,n_test
+v2_log_wind,Mean value (reference),115.568,142.251,-0.007,log(tau_s),432,93
+v2_log_wind,LinearRegression,47.322,71.622,0.745,log(tau_s),432,93
+v2_log_wind,Ridge,47.252,72.828,0.736,log(tau_s),432,93
+v2_log_wind,DecisionTree,57.922,85.315,0.638,log(tau_s),432,93
